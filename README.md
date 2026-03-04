@@ -70,6 +70,7 @@ The system operates in four major stages:
 `
 git clone <your-repo-url>
 `
+
 `
 cd WSN_RealTime_Hybrid_Project
 `
@@ -112,9 +113,9 @@ Open Terminal 1:
 
 `
 python server.py
-
+`
 Server will start at:
-
+`
 http://127.0.0.1:5000
 `
 
