@@ -1,0 +1,4 @@
+Flask
+streamlit
+requests
+pandas
