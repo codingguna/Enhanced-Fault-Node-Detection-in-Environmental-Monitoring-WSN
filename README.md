@@ -69,6 +69,8 @@ The system operates in four major stages:
 
 `
 git clone <your-repo-url>
+`
+`
 cd WSN_RealTime_Hybrid_Project
 `
 
