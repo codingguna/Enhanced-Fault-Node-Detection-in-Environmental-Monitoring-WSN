@@ -1,13 +1,27 @@
-def detect_cluster_level(data, threshold=15):
-    values = [n["value"] for n in data if n["value"] is not None]
-    if not values:
-        return []
+from config import SENSORS, DRIFT_THRESHOLD, OUTLIER_THRESHOLD
 
-    avg = sum(values) / len(values)
-    suspected = []
 
-    for node in data:
-        if node["value"] and abs(node["value"] - avg) > threshold:
-            suspected.append((node["node_id"], "data_fault"))
+def detect_cluster_fault(nodes):
 
-    return suspected
+    faults = []
+
+    for sensor in SENSORS:
+
+        values = [n[sensor] for n in nodes]
+
+        avg = sum(values) / len(values)
+
+        for node in nodes:
+
+            val = node[sensor]
+            node_id = node["node_id"]
+
+            dev = abs(val - avg)
+
+            if dev > DRIFT_THRESHOLD and dev <= OUTLIER_THRESHOLD:
+                faults.append((node_id, sensor, "Sensor Drift"))
+
+            if dev > OUTLIER_THRESHOLD:
+                faults.append((node_id, sensor, "Outlier Sensor"))
+
+    return faults

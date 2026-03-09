@@ -1,33 +1,49 @@
 from flask import Flask, request, jsonify
-import csv
 from detection_system.hybrid_detector import hybrid_detect
-from detection_system.centralized import CentralizedConfirmation
+from database.db import init_db, insert_sensor, insert_fault
 
 app = Flask(__name__)
-central = CentralizedConfirmation()
-live_data = []
+
+init_db()
+
+live_nodes = []
+
 
 @app.route("/data", methods=["POST"])
-def receive_data():
-    global live_data
+def receive():
 
-    data = request.json
-    live_data = data
+    global live_nodes
 
-    suspected = hybrid_detect(data)
-    confirmed = central.confirm(suspected)
+    nodes = request.get_json()
 
-    with open("data/detected_faults.csv", "w", newline="") as f:
-        writer = csv.writer(f)
-        writer.writerow(["node_id", "fault_type"])
-        for row in confirmed:
-            writer.writerow(row)
+    if not nodes:
+        return jsonify({"error": "No sensor data received"}), 400
+
+    faults = hybrid_detect(nodes)
+
+    for node in nodes:
+        insert_sensor(node)
+        node["status"] = "OK"
+        node["fault"] = "None"
+
+    for nid, sensor, fault in faults:
+
+        for node in nodes:
+            if node["node_id"] == nid:
+                node["status"] = "FAULT"
+                node["fault"] = f"{sensor}:{fault}"
+
+        insert_fault(nid, sensor, fault)
+
+    live_nodes = nodes
 
     return jsonify({"status": "ok"})
 
-@app.route("/nodes", methods=["GET"])
-def get_nodes():
-    return jsonify(live_data)
+@app.route("/nodes")
+def nodes():
+
+    return jsonify(live_nodes)
+
 
 if __name__ == "__main__":
     app.run(debug=True)

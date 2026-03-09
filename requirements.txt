@@ -1,4 +1,6 @@
-Flask
+flask
 streamlit
-requests
 pandas
+requests
+numpy
+networkx
