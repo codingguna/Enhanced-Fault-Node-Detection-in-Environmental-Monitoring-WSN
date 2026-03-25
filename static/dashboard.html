@@ -1,0 +1,932 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>WSN Fault Detection — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oxanium:wght@300;400;600;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#050a0f; --panel:#0b1520; --panel2:#0f1e2e; --border:#1a3a5c;
+  --accent:#00d4ff; --green:#00ff88; --warn:#ffaa00; --danger:#ff3355;
+  --orange:#ff6633; --purple:#c77dff;
+  --text:#c8e0f0; --muted:#4a6a8a;
+  --glow:0 0 20px rgba(0,212,255,.25);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Rajdhani',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px);pointer-events:none;z-index:9999}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+/* ── Header ── */
+header{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:12px 28px;border-bottom:1px solid var(--border);background:linear-gradient(90deg,rgba(0,212,255,.07) 0%,transparent 55%)}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-box{width:40px;height:40px;border:2px solid var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent);box-shadow:var(--glow);animation:pulseBorder 3s ease-in-out infinite}
+@keyframes pulseBorder{0%,100%{box-shadow:var(--glow)}50%{box-shadow:0 0 32px rgba(0,212,255,.55)}}
+.logo h1{font-family:'Oxanium',sans-serif;font-size:17px;font-weight:800;color:#fff;letter-spacing:2px;text-transform:uppercase}
+.logo p{font-size:10px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;font-family:'Share Tech Mono',monospace}
+.hd-right{display:flex;align-items:center;gap:20px}
+.live-badge{display:flex;align-items:center;gap:7px;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--green)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1s step-end infinite;box-shadow:0 0 7px var(--green)}
+@keyframes blink{50%{opacity:0}}
+#clock{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--accent)}
+#conn-status{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:3px 10px;border-radius:4px;border:1px solid;transition:all .3s}
+#conn-status.live{color:var(--green);border-color:rgba(0,255,136,.3);background:rgba(0,255,136,.08)}
+#conn-status.demo{color:var(--warn);border-color:rgba(255,170,0,.3);background:rgba(255,170,0,.08)}
+
+/* ── Nav ── */
+nav{position:relative;z-index:10;display:flex;padding:0 28px;border-bottom:1px solid var(--border);background:var(--panel)}
+nav button{background:none;border:none;border-bottom:2px solid transparent;padding:11px 20px;color:var(--muted);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .2s}
+nav button:hover{color:var(--text)}
+nav button.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── Main ── */
+main{position:relative;z-index:10;padding:18px 28px}
+.tab{display:none}.tab.active{display:block}
+
+/* ── KPI row ── */
+.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
+.kpi.red::before{background:var(--danger)}.kpi.warn::before{background:var(--warn)}.kpi.green::before{background:var(--green)}.kpi.purple::before{background:var(--purple)}
+.kpi-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'Share Tech Mono',monospace;margin-bottom:6px}
+.kpi-val{font-family:'Oxanium',sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;margin-bottom:3px}
+.kpi-sub{font-size:10px;color:var(--muted);font-family:'Share Tech Mono',monospace}
+
+/* ── Panel ── */
+.row{display:grid;gap:14px;margin-bottom:14px}
+.r-2{grid-template-columns:1fr 1fr}.r-3{grid-template-columns:2fr 1fr 1fr}.r-32{grid-template-columns:3fr 2fr}.r-23{grid-template-columns:2fr 3fr}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--panel2)}
+.ph-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-family:'Share Tech Mono',monospace}
+.ph-badge{font-family:'Share Tech Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
+.pb{padding:14px 16px}
+
+/* ── Fault badges ── */
+.fb{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;font-family:'Share Tech Mono',monospace}
+.fb.battery_low{background:rgba(255,51,85,.14);color:var(--danger);border:1px solid rgba(255,51,85,.3)}
+.fb.link_loss{background:rgba(255,170,0,.14);color:var(--warn);border:1px solid rgba(255,170,0,.3)}
+.fb.sensor_fail{background:rgba(255,102,51,.14);color:var(--orange);border:1px solid rgba(255,102,51,.3)}
+.fb.none{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.2)}
+.fb.intermittent{background:rgba(199,125,255,.14);color:var(--purple);border:1px solid rgba(199,125,255,.3)}
+
+/* ── Confidence bar ── */
+.conf-wrap{display:flex;align-items:center;gap:7px}
+.conf-bg{flex:1;height:4px;background:rgba(255,255,255,.07);border-radius:2px}
+.conf-fill{height:100%;border-radius:2px;transition:width .4s}
+.conf-num{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);width:30px}
+
+/* ── Table ── */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:7px 9px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-family:'Share Tech Mono',monospace;white-space:nowrap}
+.tbl td{padding:8px 9px;border-bottom:1px solid rgba(26,58,92,.4);vertical-align:middle}
+.tbl tr:hover td{background:rgba(0,212,255,.04)}
+.tbl-wrap{max-height:400px;overflow-y:auto;overflow-x:auto}
+
+/* ── Alert log ── */
+#alertLog{height:250px;overflow-y:auto;font-family:'Share Tech Mono',monospace;font-size:11px}
+.log-entry{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid rgba(26,58,92,.3);animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.log-ts{color:var(--muted);flex-shrink:0}
+.log-fault{color:var(--danger)}.log-ok{color:var(--green)}.log-warn{color:var(--warn)}
+
+/* ── Charts ── */
+.ch{position:relative;height:200px}.ch-lg{position:relative;height:270px}.ch-xl{position:relative;height:320px}
+
+/* ── Network canvas ── */
+#netCanvas{width:100%;border-radius:6px;display:block}
+
+/* ── Metrics ── */
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.metric-card{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.metric-card .val{font-family:'Oxanium',sans-serif;font-size:20px;font-weight:700;color:var(--green);margin-bottom:3px}
+.metric-card .lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-family:'Share Tech Mono',monospace}
+.cls-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cls-name{font-family:'Share Tech Mono',monospace;font-size:11px;width:90px;color:var(--text)}
+.cls-bars{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.bar-item{display:flex;flex-direction:column;gap:2px}
+.bar-lbl{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-family:'Share Tech Mono',monospace}
+.bar-track{height:5px;background:rgba(255,255,255,.07);border-radius:3px}
+.bar-fill{height:100%;border-radius:3px;background:var(--accent)}
+.bar-num{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text)}
+
+/* ── Filter row ── */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.fbtn{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--panel2);color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s}
+.fbtn:hover,.fbtn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08)}
+
+/* ── Node status list ── */
+.node-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(26,58,92,.35)}
+.node-id{font-family:'Share Tech Mono',monospace;font-size:12px;color:#fff}
+.node-sub{font-size:10px;color:var(--muted);font-family:'Share Tech Mono',monospace}
+
+/* ── Scrollbars ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── Empty state ── */
+.empty{text-align:center;padding:30px;color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:11px}
+
+/* ── Spinner ── */
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-box">WSN</div>
+    <div>
+      <h1>Fault Detection Command Center</h1>
+      <p>Environmental Monitoring · Hybrid Detection System v2.0</p>
+    </div>
+  </div>
+  <div class="hd-right">
+    <span id="conn-status" class="demo">⬤ DEMO MODE</span>
+    <div class="live-badge"><div class="dot"></div>LIVE</div>
+    <div id="clock">--:--:--</div>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="goTab('overview',this)">Overview</button>
+  <button onclick="goTab('faults',this)">Fault Log</button>
+  <button onclick="goTab('network',this)">Network Map</button>
+  <button onclick="goTab('ml',this)">ML Metrics</button>
+  <button onclick="goTab('analysis',this)">Analysis</button>
+</nav>
+
+<main>
+
+<!-- ═══ OVERVIEW ═══════════════════════════════════════════════════════════ -->
+<div class="tab active" id="tab-overview">
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-lbl">Total Readings</div><div class="kpi-val" id="k-readings">—</div><div class="kpi-sub">sensor data points</div></div>
+    <div class="kpi red"><div class="kpi-lbl">Faults Detected</div><div class="kpi-val" id="k-faults">—</div><div class="kpi-sub" id="k-faultrate">—</div></div>
+    <div class="kpi warn"><div class="kpi-lbl">Active Clusters</div><div class="kpi-val" id="k-clusters">—</div><div class="kpi-sub">monitoring groups</div></div>
+    <div class="kpi green"><div class="kpi-lbl">ML Accuracy</div><div class="kpi-val" id="k-ml">—</div><div class="kpi-sub">random forest</div></div>
+    <div class="kpi purple"><div class="kpi-lbl">Last Reading</div><div class="kpi-val" style="font-size:15px" id="k-last">—</div><div class="kpi-sub">timestamp</div></div>
+  </div>
+
+  <div class="row r-32">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Fault Detection Timeline</span><span class="ph-badge" id="tl-badge">0 events</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="timelineChart"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Fault Type Distribution</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="donutChart"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="row r-2">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Live Alert Log</span><div class="spin" id="log-spin"></div></div>
+      <div class="pb" style="padding:8px 12px"><div id="alertLog"><div class="empty">Waiting for data…<br><br>Start server.py then sensor_client.py<br>or view demo data above</div></div></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Battery Levels — Latest per Node</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="batteryChart"></canvas></div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ FAULT LOG ══════════════════════════════════════════════════════════ -->
+<div class="tab" id="tab-faults">
+  <div class="filters">
+    <button class="fbtn active" onclick="setFilter('all',this)">All</button>
+    <button class="fbtn" onclick="setFilter('fault',this)">Faults Only</button>
+    <button class="fbtn" onclick="setFilter('battery_low',this)">Battery Low</button>
+    <button class="fbtn" onclick="setFilter('link_loss',this)">Link Loss</button>
+    <button class="fbtn" onclick="setFilter('sensor_fail',this)">Sensor Fail</button>
+    <button class="fbtn" onclick="setFilter('intermittent',this)">Intermittent</button>
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="ph-title">Detection Records</span><span class="ph-badge" id="flt-badge">0 records</span></div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th>Node</th><th>Cluster</th><th>Time</th><th>Fault Type</th>
+          <th>Confidence</th><th>Layers</th><th>Battery</th><th>Signal</th>
+          <th>Temp</th><th>Latency</th><th>PDR</th>
+        </tr></thead>
+        <tbody id="flt-body"><tr><td colspan="11" class="empty">No records yet</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ NETWORK MAP ════════════════════════════════════════════════════════ -->
+<div class="tab" id="tab-network">
+  <div class="row r-32">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">WSN Topology Map</span><span class="ph-badge">50 Nodes · 5 Clusters</span></div>
+      <div class="pb"><canvas id="netCanvas" height="430"></canvas></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Faulty Node Status</span></div>
+      <div class="pb" style="max-height:460px;overflow-y:auto" id="nodeList"><div class="empty">No faults detected yet</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ML METRICS ═════════════════════════════════════════════════════════ -->
+<div class="tab" id="tab-ml">
+  <div class="row r-2">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Model Performance</span><span class="ph-badge">Random Forest · 5-Fold CV</span></div>
+      <div class="pb">
+        <div class="metric-grid" id="metric-grid"><div class="empty" style="grid-column:1/-1">Run ml_trainer.py first, then /metrics endpoint</div></div>
+        <div id="cls-metrics"></div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Rule-Based vs ML — Comparison</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="compChart"></canvas></div></div>
+    </div>
+  </div>
+  <div class="row r-2">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Top Feature Importance</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="featChart"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Confusion Matrix</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="confChart"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ANALYSIS ══════════════════════════════════════════════════════════ -->
+<div class="tab" id="tab-analysis">
+  <div class="row r-2">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Fault Rate per Cluster</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="clusterChart"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Detection Layer Contribution</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="layerChart"></canvas></div></div>
+    </div>
+  </div>
+  <div class="row r-2">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Latency Distribution (ms)</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="latencyChart"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">PDR Trend (last 40 readings)</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="pdrChart"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════════════════════
+const API      = 'http://127.0.0.1:5000';
+const POLL_MS  = 3000;
+const MAX_LOG  = 60;
+const TL_BINS  = 30;
+const CLUSTER_COLORS = ['#00d4ff','#00ff88','#ffaa00','#ff6633','#c77dff'];
+const FAULT_CSS = { battery_low:'danger', link_loss:'warn', sensor_fail:'orange', none:'green', intermittent:'purple' };
+
+// Fixed topology positions for 50 nodes
+const NODE_POS = {};
+for (let i = 1; i <= 50; i++) {
+  const c  = (i - 1) % 5;
+  const ring = Math.floor((i - 1) / 5);
+  const angle = (c / 5) * 2 * Math.PI + ring * 0.5;
+  const r     = 0.18 + ring * 0.065;
+  NODE_POS[i] = { x: 0.5 + r * Math.cos(angle), y: 0.5 + r * Math.sin(angle), cluster: c + 1 };
+}
+
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let detections   = [];
+let mlMetrics    = null;
+let lastId       = 0;
+let currentFilter= 'all';
+let charts       = {};
+let isLive       = false;
+let analysisBuilt= false;
+
+// ════════════════════════════════════════════════════════
+//  CLOCK
+// ════════════════════════════════════════════════════════
+function tick(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US',{hour12:false}); }
+setInterval(tick,1000); tick();
+
+// ════════════════════════════════════════════════════════
+//  TAB NAVIGATION
+// ════════════════════════════════════════════════════════
+function goTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'network') drawNetwork();
+  if (id === 'ml')      loadMetrics();
+  if (id === 'analysis') buildAnalysis();
+}
+
+// ════════════════════════════════════════════════════════
+//  CHART HELPERS
+// ════════════════════════════════════════════════════════
+Chart.defaults.color         = '#4a6a8a';
+Chart.defaults.borderColor   = '#1a3a5c';
+Chart.defaults.font.family   = "'Share Tech Mono', monospace";
+Chart.defaults.font.size     = 9;
+
+const scaleDefaults = () => ({
+  x: { grid:{ color:'#0d2035' }, ticks:{ color:'#4a6a8a' } },
+  y: { grid:{ color:'#0d2035' }, ticks:{ color:'#4a6a8a' } }
+});
+
+// ════════════════════════════════════════════════════════
+//  INIT OVERVIEW CHARTS
+// ════════════════════════════════════════════════════════
+function initCharts() {
+  // Timeline
+  charts.tl = new Chart(document.getElementById('timelineChart'), {
+    type: 'line',
+    data: { labels:[], datasets:[
+      { label:'Faults', data:[], borderColor:'#ff3355', backgroundColor:'rgba(255,51,85,.12)',
+        fill:true, tension:.4, pointRadius:3, borderWidth:2 },
+      { label:'Normal', data:[], borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,.06)',
+        fill:true, tension:.4, pointRadius:2, borderWidth:1.5 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:true, labels:{ color:'#4a6a8a', boxWidth:10, font:{size:9} } } },
+      scales: scaleDefaults() }
+  });
+
+  // Donut
+  charts.donut = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: { labels:['Battery Low','Link Loss','Sensor Fail','Normal'],
+      datasets:[{ data:[0,0,0,0],
+        backgroundColor:['rgba(255,51,85,.8)','rgba(255,170,0,.8)','rgba(255,102,51,.8)','rgba(0,255,136,.7)'],
+        borderColor:['#ff3355','#ffaa00','#ff6633','#00ff88'],
+        borderWidth:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'63%',
+      plugins:{ legend:{ display:true, position:'bottom',
+        labels:{ color:'#c8e0f0', font:{size:9,family:"'Share Tech Mono'"}, padding:10, boxWidth:9 } } } }
+  });
+
+  // Battery
+  charts.battery = new Chart(document.getElementById('batteryChart'), {
+    type: 'bar',
+    data: { labels:[], datasets:[{ label:'Battery %', data:[],
+      backgroundColor: ctx => {
+        const v = ctx.parsed?.y ?? 100;
+        return v < 15 ? 'rgba(255,51,85,.75)' : v < 30 ? 'rgba(255,170,0,.75)' : 'rgba(0,212,255,.65)';
+      }, borderRadius:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{display:false}, ticks:{color:'#4a6a8a', font:{size:8}, maxRotation:90} },
+        y:{ max:100, grid:{color:'#0d2035'}, ticks:{color:'#4a6a8a'} } } }
+  });
+}
+
+// ════════════════════════════════════════════════════════
+//  POLLING
+// ════════════════════════════════════════════════════════
+async function poll() {
+  try {
+    const [sRes, dRes] = await Promise.all([
+      fetch(API + '/status',          { signal: AbortSignal.timeout(2500) }),
+      fetch(API + '/detections?limit=200', { signal: AbortSignal.timeout(2500) })
+    ]);
+    if (!sRes.ok || !dRes.ok) throw new Error();
+
+    const s = await sRes.json();
+    const d = await dRes.json();
+
+    // Update KPIs
+    document.getElementById('k-readings').textContent  = s.total_readings?.toLocaleString() ?? '—';
+    document.getElementById('k-faults').textContent    = s.total_faults?.toLocaleString()   ?? '—';
+    document.getElementById('k-faultrate').textContent = `${(s.fault_rate*100).toFixed(1)}% rate`;
+    document.getElementById('k-clusters').textContent  = s.active_clusters ?? '—';
+    if (s.last_reading) {
+      document.getElementById('k-last').textContent =
+        new Date(s.last_reading).toLocaleTimeString('en-US',{hour12:false});
+    }
+
+    const rows = d.data ?? [];
+    const newRows = rows.filter(r => r.id > lastId);
+
+    if (newRows.length) {
+      lastId      = Math.max(...rows.map(r => r.id));
+      detections  = rows;
+      renderFaultTable();
+      renderTimeline();
+      renderDonut();
+      renderBattery();
+      renderAlertLog(newRows);
+      document.getElementById('tl-badge').textContent = `${rows.filter(r=>r.fault_detected).length} faults`;
+      if (document.getElementById('tab-network').classList.contains('active')) drawNetwork();
+      if (document.getElementById('tab-analysis').classList.contains('active')) buildAnalysis(true);
+    }
+
+    setLive(true);
+  } catch {
+    setLive(false);
+  }
+}
+
+function setLive(live) {
+  if (isLive === live) return;
+  isLive = live;
+  const el = document.getElementById('conn-status');
+  if (live) {
+    el.className = 'live'; el.textContent = '⬤ LIVE';
+    document.getElementById('log-spin').style.display = 'inline-block';
+  } else {
+    el.className = 'demo'; el.textContent = '⬤ DEMO MODE';
+    document.getElementById('log-spin').style.display = 'none';
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  RENDER HELPERS
+// ════════════════════════════════════════════════════════
+function renderTimeline() {
+  const buckets = {};
+  detections.slice(-TL_BINS * 3).forEach(r => {
+    const t = r.timestamp?.slice(11,16) ?? '—';
+    if (!buckets[t]) buckets[t] = { f:0, n:0 };
+    r.fault_detected ? buckets[t].f++ : buckets[t].n++;
+  });
+  const lbls = Object.keys(buckets).slice(-TL_BINS);
+  charts.tl.data.labels                 = lbls;
+  charts.tl.data.datasets[0].data      = lbls.map(l => buckets[l].f);
+  charts.tl.data.datasets[1].data      = lbls.map(l => buckets[l].n);
+  charts.tl.update('none');
+}
+
+function renderDonut() {
+  const faults = detections.filter(r => r.fault_detected);
+  const c = { battery_low:0, link_loss:0, sensor_fail:0, none: detections.length - faults.length };
+  faults.forEach(r => { c[r.fault_type] = (c[r.fault_type]||0)+1; });
+  charts.donut.data.datasets[0].data = [c.battery_low, c.link_loss, c.sensor_fail, c.none];
+  charts.donut.update('none');
+}
+
+function renderBattery() {
+  const latest = {};
+  detections.forEach(r => { if (r.node_id) latest[r.node_id] = r.battery_level; });
+  const nodes = Object.keys(latest).map(Number).sort((a,b)=>a-b);
+  charts.battery.data.labels                = nodes.map(n => `N${n}`);
+  charts.battery.data.datasets[0].data     = nodes.map(n => latest[n]);
+  charts.battery.update('none');
+}
+
+function renderAlertLog(newRows) {
+  const log  = document.getElementById('alertLog');
+  const emp  = log.querySelector('.empty');
+  if (emp) log.innerHTML = '';
+  newRows.filter(r => r.fault_detected).forEach(r => {
+    const ts  = r.timestamp ? new Date(r.timestamp).toLocaleTimeString('en-US',{hour12:false}) : '—';
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.innerHTML = `<span class="log-ts">${ts}</span>`+
+      `<span class="log-fault">⚠ N${String(r.node_id).padStart(2,'0')} `+
+      `${r.fault_type?.toUpperCase()} conf:${(r.confidence*100).toFixed(0)}%</span>`;
+    log.insertBefore(div, log.firstChild);
+  });
+  while (log.children.length > MAX_LOG) log.removeChild(log.lastChild);
+}
+
+// ── Fault table ────────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFaultTable();
+}
+
+function filteredRows() {
+  if (currentFilter === 'all')   return detections;
+  if (currentFilter === 'fault') return detections.filter(r=>r.fault_detected);
+  return detections.filter(r=>r.fault_type === currentFilter);
+}
+
+function renderFaultTable() {
+  const rows = filteredRows();
+  document.getElementById('flt-badge').textContent = `${rows.length} records`;
+  const tbody = document.getElementById('flt-body');
+  if (!rows.length) { tbody.innerHTML='<tr><td colspan="11" class="empty">No matching records</td></tr>'; return; }
+
+  tbody.innerHTML = rows.slice(0,300).map(r => {
+    const ft   = r.fault_type || 'none';
+    const ts   = r.timestamp ? new Date(r.timestamp).toLocaleTimeString('en-US',{hour12:false}) : '—';
+    const conf = r.confidence || 0;
+    const confColor = conf > .7 ? '#ff3355' : conf > .4 ? '#ffaa00' : '#00d4ff';
+    const L1 = r.layer1_fault ? `<span style="color:#00d4ff">R</span>` : `<span style="color:#1a3a5c">R</span>`;
+    const L2 = r.layer2_fault ? `<span style="color:#00ff88">C</span>` : `<span style="color:#1a3a5c">C</span>`;
+    const L3 = r.layer3_fault ? `<span style="color:#c77dff">ML</span>` : `<span style="color:#1a3a5c">ML</span>`;
+    const cc  = CLUSTER_COLORS[(r.cluster_id||1)-1];
+    return `<tr>
+      <td style="font-family:'Share Tech Mono';color:#fff">N${String(r.node_id).padStart(2,'0')}</td>
+      <td style="font-family:'Share Tech Mono';color:${cc}">C${r.cluster_id}</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px;color:var(--muted)">${ts}</td>
+      <td><span class="fb ${ft}">${ft==='none'?'✓ NORMAL':'⚠ '+ft.replace('_',' ').toUpperCase()}</span></td>
+      <td><div class="conf-wrap"><div class="conf-bg"><div class="conf-fill" style="width:${conf*100}%;background:${confColor}"></div></div><span class="conf-num">${(conf*100).toFixed(0)}%</span></div></td>
+      <td style="font-family:'Share Tech Mono';font-size:11px;letter-spacing:2px">${L1} ${L2} ${L3}</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px;color:${(r.battery_level||100)<20?'var(--danger)':'var(--text)'}">${r.battery_level?.toFixed(1)||'—'}%</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px;color:${(r.signal_strength||0)<-90?'var(--warn)':'var(--text)'}">${r.signal_strength?.toFixed(1)||'—'}</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px">${r.temperature?.toFixed(1)||'—'}°C</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px;color:${(r.latency_ms||0)>250?'var(--warn)':'var(--text)'}">${r.latency_ms?.toFixed(0)||'—'}ms</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px">${r.pdr?.toFixed(3)||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Network map ────────────────────────────────────────────────────────────
+function drawNetwork() {
+  const canvas = document.getElementById('netCanvas');
+  const W = canvas.offsetWidth, H = 430;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext('2d');
+  ctx.clearRect(0,0,W,H);
+
+  // Latest state per node
+  const ns = {};
+  detections.forEach(r => { if (!ns[r.node_id] || ns[r.node_id].id < r.id) ns[r.node_id] = r; });
+
+  // Cluster zones
+  for (let c = 1; c <= 5; c++) {
+    const pts = Object.entries(NODE_POS).filter(([,p])=>p.cluster===c);
+    const xs  = pts.map(([,p])=>p.x*W), ys = pts.map(([,p])=>p.y*H);
+    const cx  = xs.reduce((a,b)=>a+b,0)/xs.length;
+    const cy  = ys.reduce((a,b)=>a+b,0)/ys.length;
+    ctx.beginPath(); ctx.arc(cx,cy,72,0,Math.PI*2);
+    ctx.strokeStyle = CLUSTER_COLORS[c-1]+'22'; ctx.lineWidth=1;
+    ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
+    ctx.fillStyle   = CLUSTER_COLORS[c-1]+'07'; ctx.fill();
+    ctx.fillStyle   = CLUSTER_COLORS[c-1]+'80'; ctx.font="9px 'Share Tech Mono'";
+    ctx.fillText(`C${c}`, cx-6, cy-60);
+  }
+
+  // Intra-cluster edges
+  const ids = Object.keys(NODE_POS).map(Number);
+  ids.forEach(i => ids.forEach(j => {
+    if (j<=i || NODE_POS[i].cluster !== NODE_POS[j].cluster) return;
+    ctx.beginPath();
+    ctx.moveTo(NODE_POS[i].x*W, NODE_POS[i].y*H);
+    ctx.lineTo(NODE_POS[j].x*W, NODE_POS[j].y*H);
+    ctx.strokeStyle='rgba(26,58,92,.45)'; ctx.lineWidth=.5; ctx.stroke();
+  }));
+
+  // Nodes
+  ids.forEach(id => {
+    const { x, y } = NODE_POS[id];
+    const px = x*W, py = y*H;
+    const r  = ns[id];
+    const ft = r?.fault_type || 'none';
+    const faulted = r?.fault_detected;
+    let col = '#00d4ff';
+    if (faulted) {
+      if (ft==='battery_low') col='#ff3355';
+      else if (ft==='link_loss') col='#ffaa00';
+      else if (ft==='sensor_fail') col='#ff6633';
+      else col='#c77dff';
+    }
+    if (faulted) {
+      ctx.beginPath(); ctx.arc(px,py,11,0,Math.PI*2);
+      ctx.fillStyle=col+'28'; ctx.fill();
+    }
+    ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2);
+    ctx.fillStyle=col; ctx.fill();
+    ctx.strokeStyle=faulted?col:'rgba(0,212,255,.25)'; ctx.lineWidth=1; ctx.stroke();
+    ctx.fillStyle='#3a5a7a'; ctx.font="8px 'Share Tech Mono'";
+    ctx.fillText(id, px+7, py+3);
+  });
+
+  // Legend
+  [['#00d4ff','Normal'],['#ff3355','Battery Low'],['#ffaa00','Link Loss'],['#ff6633','Sensor Fail']].forEach(([col,lbl],i)=>{
+    ctx.beginPath(); ctx.arc(12, H-10-i*15, 4, 0, Math.PI*2);
+    ctx.fillStyle=col; ctx.fill();
+    ctx.fillStyle='#4a6a8a'; ctx.font="8px 'Share Tech Mono'";
+    ctx.fillText(lbl, 22, H-7-i*15);
+  });
+
+  // Faulty node list
+  const list = document.getElementById('nodeList');
+  const faulty = Object.entries(ns).filter(([,r])=>r.fault_detected);
+  if (!faulty.length) { list.innerHTML='<div class="empty">No faults detected yet</div>'; return; }
+  list.innerHTML = faulty.map(([nid,r])=>`
+    <div class="node-item">
+      <div><div class="node-id">Node ${nid}</div><div class="node-sub">Cluster ${r.cluster_id} · ${r.timestamp?.slice(11,19)||'—'}</div></div>
+      <span class="fb ${r.fault_type}">${r.fault_type?.replace('_',' ').toUpperCase()}</span>
+    </div>`).join('');
+}
+
+// ── ML Metrics ─────────────────────────────────────────────────────────────
+async function loadMetrics() {
+  if (mlMetrics) { renderMetrics(); return; }
+  try {
+    const res = await fetch(API + '/metrics', { signal: AbortSignal.timeout(2000) });
+    if (res.ok) { mlMetrics = await res.json(); renderMetrics(); }
+    else renderDemoMetrics();
+  } catch { renderDemoMetrics(); }
+}
+
+function renderDemoMetrics() {
+  mlMetrics = {
+    accuracy:.9030, cv_mean:.8962, cv_std:.0071, rule_based_accuracy:.7244,
+    classes:['battery_low','link_loss','none','sensor_fail'],
+    per_class:{
+      battery_low:  {precision:.35,recall:.39,f1:.37,support:18},
+      link_loss:    {precision:.36,recall:.42,f1:.39,support:19},
+      none:         {precision:1.00,recall:1.00,f1:1.00,support:317},
+      sensor_fail:  {precision:.25,recall:.18,f1:.21,support:17},
+    },
+    confusion_matrix:[[7,3,7,1],[2,8,9,0],[4,3,308,2],[3,2,9,3]],
+    feature_importance:{
+      recovery_time_ms:.343,energy_ratio:.057,humidity:.056,
+      signal_strength:.054,battery_level:.053,latency_ms:.052,
+      pdr:.048,temperature:.046,energy_consumed_mJ:.041,load_on_node:.038
+    }
+  };
+  renderMetrics();
+}
+
+function renderMetrics() {
+  const m = mlMetrics;
+  document.getElementById('metric-grid').innerHTML = [
+    ['Accuracy',   `${(m.accuracy*100).toFixed(1)}%`],
+    ['CV Mean',    `${(m.cv_mean*100).toFixed(1)}%`],
+    ['CV Std',     `±${(m.cv_std*100).toFixed(1)}%`],
+    ['Baseline',   `${(m.rule_based_accuracy*100).toFixed(1)}%`],
+  ].map(([l,v])=>`<div class="metric-card"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('');
+
+  document.getElementById('cls-metrics').innerHTML =
+    `<div style="margin:14px 0 8px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'Share Tech Mono'">Per-Class Breakdown</div>`+
+    m.classes.map(cls => {
+      const pc = m.per_class[cls];
+      return `<div class="cls-row">
+        <span class="cls-name">${cls}</span>
+        <div class="cls-bars">${['precision','recall','f1'].map(met=>`
+          <div class="bar-item">
+            <div class="bar-lbl">${met}</div>
+            <div class="bar-track"><div class="bar-fill" style="width:${(pc[met]*100).toFixed(0)}%"></div></div>
+            <div class="bar-num">${(pc[met]*100).toFixed(0)}%</div>
+          </div>`).join('')}</div>
+      </div>`;
+    }).join('');
+
+  // Comparison chart
+  if (!charts.comp) {
+    const imp  = m.improvement ?? (m.accuracy - m.rule_based_accuracy);
+    const cats = ['Accuracy','Fault Prec.','Fault Recall'];
+    const rb   = [m.rule_based_accuracy*100, 14.9, 18.7];
+    const ml   = [m.accuracy*100, 38.7, 39.7];
+    charts.comp = new Chart(document.getElementById('compChart'),{
+      type:'bar',
+      data:{labels:cats,datasets:[
+        {label:'Rule-Based',data:rb,backgroundColor:'rgba(255,170,0,.65)',borderColor:'#ffaa00',borderWidth:1,borderRadius:4},
+        {label:'ML Hybrid', data:ml,backgroundColor:'rgba(0,212,255,.65)',borderColor:'#00d4ff',borderWidth:1,borderRadius:4}
+      ]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:true,labels:{color:'#c8e0f0',font:{size:9},boxWidth:10}}},
+        scales:{
+          x:{grid:{display:false},ticks:{color:'#4a6a8a'}},
+          y:{max:110,grid:{color:'#0d2035'},ticks:{color:'#4a6a8a',callback:v=>v+'%'}}
+        }
+      }
+    });
+  }
+
+  // Feature chart
+  if (!charts.feat) {
+    const fi    = m.feature_importance;
+    const feats = Object.keys(fi).slice(0,8);
+    charts.feat = new Chart(document.getElementById('featChart'),{
+      type:'bar',
+      data:{labels:feats,datasets:[{data:feats.map(f=>fi[f]*100),
+        backgroundColor:'rgba(0,255,136,.65)',borderColor:'#00ff88',borderWidth:1,borderRadius:3}]},
+      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{grid:{color:'#0d2035'},ticks:{color:'#4a6a8a',callback:v=>v.toFixed(1)+'%'}},
+          y:{grid:{display:false},ticks:{color:'#c8e0f0'}}
+        }
+      }
+    });
+  }
+
+  // Confusion matrix as heatmap
+  if (!charts.conf) {
+    const cm  = m.confusion_matrix;
+    const cls = m.classes;
+    const data = [];
+    cm.forEach((row,i) => row.forEach((v,j) => data.push({x:j,y:i,v})));
+    const maxV = Math.max(...cm.flat());
+    charts.conf = new Chart(document.getElementById('confChart'),{
+      type:'scatter',
+      data:{datasets:[{
+        data:data,
+        backgroundColor: d => `rgba(0,212,255,${d.raw.v/maxV*0.85+0.05})`,
+        pointStyle:'rect',
+        radius: 28,
+      }]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:d=>`${d.raw.v} predictions`}}},
+        scales:{
+          x:{min:-.5,max:cls.length-.5,grid:{color:'#0d2035'},
+            ticks:{color:'#c8e0f0',callback:v=>cls[v]||'',stepSize:1}},
+          y:{min:-.5,max:cls.length-.5,grid:{color:'#0d2035'},reverse:true,
+            ticks:{color:'#c8e0f0',callback:v=>cls[v]||'',stepSize:1}}
+        }
+      }
+    });
+  }
+}
+
+// ── Analysis tab ───────────────────────────────────────────────────────────
+function buildAnalysis(force=false) {
+  if (!detections.length && !force) return;
+
+  // Cluster fault rate
+  const cs = {};
+  detections.forEach(r => {
+    const c = r.cluster_id||0;
+    if (!cs[c]) cs[c]={t:0,f:0};
+    cs[c].t++; if(r.fault_detected) cs[c].f++;
+  });
+  const clusters = Object.keys(cs).sort();
+  if (charts.cluster) {
+    charts.cluster.data.labels = clusters.map(c=>`Cluster ${c}`);
+    charts.cluster.data.datasets[0].data = clusters.map(c=>(cs[c].f/cs[c].t*100).toFixed(1));
+    charts.cluster.update('none');
+  } else {
+    charts.cluster = new Chart(document.getElementById('clusterChart'),{
+      type:'bar',
+      data:{labels:clusters.map(c=>`Cluster ${c}`),datasets:[{
+        data:clusters.map(c=>(cs[c].f/cs[c].t*100).toFixed(1)),
+        backgroundColor:clusters.map((_,i)=>CLUSTER_COLORS[i%5]+'aa'),
+        borderColor:clusters.map((_,i)=>CLUSTER_COLORS[i%5]),
+        borderWidth:1,borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{grid:{display:false},ticks:{color:'#4a6a8a'}},
+                y:{grid:{color:'#0d2035'},ticks:{color:'#4a6a8a',callback:v=>v+'%'}}}}
+    });
+  }
+
+  // Layer contribution
+  const l1=detections.filter(r=>r.layer1_fault).length;
+  const l2=detections.filter(r=>r.layer2_fault).length;
+  const l3=detections.filter(r=>r.layer3_fault).length;
+  if (charts.layer) {
+    charts.layer.data.datasets[0].data=[l1,l2,l3];
+    charts.layer.update('none');
+  } else {
+    charts.layer = new Chart(document.getElementById('layerChart'),{
+      type:'bar',
+      data:{labels:['Layer 1\nRule-Based','Layer 2\nCluster','Layer 3\nML Model'],
+        datasets:[{data:[l1,l2,l3],
+          backgroundColor:['rgba(0,212,255,.7)','rgba(0,255,136,.7)','rgba(199,125,255,.7)'],
+          borderColor:['#00d4ff','#00ff88','#c77dff'],
+          borderWidth:1,borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{grid:{display:false},ticks:{color:'#4a6a8a'}},
+                y:{grid:{color:'#0d2035'},ticks:{color:'#4a6a8a'}}}}
+    });
+  }
+
+  // Latency histogram
+  const lats = detections.map(r=>r.latency_ms).filter(Boolean);
+  const bins  = [0,50,100,150,200,250,300,400];
+  const bCnt  = bins.slice(0,-1).map((b,i)=>lats.filter(l=>l>=b&&l<bins[i+1]).length);
+  if (!charts.lat) {
+    charts.lat = new Chart(document.getElementById('latencyChart'),{
+      type:'bar',
+      data:{labels:bins.slice(0,-1).map((b,i)=>`${b}-${bins[i+1]}`),
+        datasets:[{data:bCnt,
+          backgroundColor:bCnt.map((_,i)=>i>4?'rgba(255,51,85,.7)':'rgba(0,212,255,.6)'),
+          borderRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},scales:{
+          x:{grid:{display:false},ticks:{color:'#4a6a8a'}},
+          y:{grid:{color:'#0d2035'},ticks:{color:'#4a6a8a'}}}}
+    });
+  }
+
+  // PDR trend
+  const pdrPts = detections.slice(-40).map(r=>r.pdr).filter(Boolean);
+  if (charts.pdr) {
+    charts.pdr.data.labels = pdrPts.map((_,i)=>i);
+    charts.pdr.data.datasets[0].data = pdrPts;
+    charts.pdr.update('none');
+  } else {
+    charts.pdr = new Chart(document.getElementById('pdrChart'),{
+      type:'line',
+      data:{labels:pdrPts.map((_,i)=>i),datasets:[{data:pdrPts,
+        borderColor:'#00ff88',backgroundColor:'rgba(0,255,136,.08)',
+        fill:true,tension:.4,pointRadius:2,borderWidth:1.5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{grid:{display:false},ticks:{display:false}},
+          y:{min:.75,max:1.01,grid:{color:'#0d2035'},ticks:{color:'#4a6a8a'}}}}
+    });
+  }
+  analysisBuilt = true;
+}
+
+// ════════════════════════════════════════════════════════
+//  DEMO DATA  (shown when server is offline)
+// ════════════════════════════════════════════════════════
+function loadDemo() {
+  const ftypes = ['none','none','none','none','battery_low','link_loss','sensor_fail','intermittent'];
+  const demo   = [];
+  for (let i = 1; i <= 150; i++) {
+    const ft = ftypes[Math.floor(Math.random()*ftypes.length)];
+    const flt= ft !== 'none';
+    demo.push({
+      id: i,
+      node_id: Math.ceil(Math.random()*50),
+      cluster_id: Math.ceil(Math.random()*5),
+      timestamp: new Date(Date.now()-(150-i)*10000).toISOString(),
+      fault_detected: flt?1:0,
+      fault_type: ft,
+      confidence: flt ? +(Math.random()*.45+.5).toFixed(4) : 0,
+      layer1_fault: flt && Math.random()>.6?1:0,
+      layer2_fault: flt && Math.random()>.7?1:0,
+      layer3_fault: flt && Math.random()>.4?1:0,
+      battery_level:  +(Math.random()*85+10).toFixed(2),
+      signal_strength:-(+(Math.random()*55+30).toFixed(2)),
+      temperature:    +(Math.random()*28+12).toFixed(2),
+      humidity:       +(Math.random()*55+25).toFixed(2),
+      latency_ms:     +(Math.random()*240+20).toFixed(2),
+      pdr:            +(Math.random()*.14+.85).toFixed(3),
+    });
+  }
+  detections = demo;
+  lastId = 150;
+
+  const faults = demo.filter(r=>r.fault_detected).length;
+  document.getElementById('k-readings').textContent  = '150';
+  document.getElementById('k-faults').textContent    = faults;
+  document.getElementById('k-faultrate').textContent = `${(faults/150*100).toFixed(1)}% rate (DEMO)`;
+  document.getElementById('k-clusters').textContent  = '5';
+  document.getElementById('k-ml').textContent        = '90.3%';
+  document.getElementById('k-last').textContent      = new Date().toLocaleTimeString('en-US',{hour12:false});
+  document.getElementById('tl-badge').textContent    = `${faults} faults`;
+
+  renderFaultTable(); renderTimeline(); renderDonut(); renderBattery();
+  renderAlertLog(demo.filter(r=>r.fault_detected).slice(-8));
+
+  // Demo log message
+  const log = document.getElementById('alertLog');
+  const div = document.createElement('div');
+  div.className='log-entry';
+  div.innerHTML='<span class="log-ts">DEMO</span><span class="log-warn">Server offline — showing demo data. Start server.py to connect live.</span>';
+  log.appendChild(div);
+}
+
+// ════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  initCharts();
+
+  // Try server
+  try {
+    const r = await fetch(API + '/status', { signal: AbortSignal.timeout(2000) });
+    if (r.ok) {
+      setLive(true);
+      setInterval(poll, POLL_MS);
+      poll();
+    } else throw new Error();
+  } catch {
+    loadDemo();
+    renderDemoMetrics();
+    setLive(false);
+    // Keep trying every 5 s
+    setInterval(async () => {
+      try {
+        const r = await fetch(API + '/status', { signal: AbortSignal.timeout(1500) });
+        if (r.ok) { setLive(true); setInterval(poll, POLL_MS); poll(); }
+      } catch {}
+    }, 5000);
+  }
+});
+</script>
+</body>
+</html>

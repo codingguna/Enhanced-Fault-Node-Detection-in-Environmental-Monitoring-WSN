@@ -1,0 +1,77 @@
+{
+  "accuracy": 0.903,
+  "cv_mean": 0.8962,
+  "cv_std": 0.0071,
+  "rule_based_accuracy": 0.7244,
+  "improvement": 0.1786,
+  "classes": [
+    "battery_low",
+    "link_loss",
+    "none",
+    "sensor_fail"
+  ],
+  "per_class": {
+    "battery_low": {
+      "precision": 0.35,
+      "recall": 0.3889,
+      "f1": 0.3684,
+      "support": 18
+    },
+    "link_loss": {
+      "precision": 0.3636,
+      "recall": 0.4211,
+      "f1": 0.3902,
+      "support": 19
+    },
+    "none": {
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "support": 317
+    },
+    "sensor_fail": {
+      "precision": 0.25,
+      "recall": 0.1765,
+      "f1": 0.2069,
+      "support": 17
+    }
+  },
+  "confusion_matrix": [
+    [
+      7,
+      7,
+      0,
+      4
+    ],
+    [
+      6,
+      8,
+      0,
+      5
+    ],
+    [
+      0,
+      0,
+      317,
+      0
+    ],
+    [
+      7,
+      7,
+      0,
+      3
+    ]
+  ],
+  "feature_importance": {
+    "recovery_time_ms": 0.3429,
+    "energy_ratio": 0.0565,
+    "humidity": 0.0555,
+    "signal_strength": 0.0536,
+    "battery_level": 0.0534,
+    "signal_load_score": 0.0528,
+    "pdr": 0.0503,
+    "data_packet_size": 0.05,
+    "temperature": 0.046,
+    "latency_ms": 0.0459
+  }
+}

@@ -1,6 +1,7 @@
-flask
-streamlit
+Flask
 pandas
-requests
 numpy
-networkx
+scikit-learn
+joblib
+requests
+matplotlib

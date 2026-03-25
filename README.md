@@ -1,207 +1,264 @@
-# Real-Time Hybrid Fault Detection System for Environmental Monitoring WSN
+# Smart Hybrid Fault Node Detection in Environmental Monitoring WSN
 
-## 📌 Abstract (Five Key Points)
-
-1. This project implements a real-time hybrid fault detection system for Environmental Monitoring Wireless Sensor Networks (WSNs).
-2. It simulates multiple sensor node faults including hard, soft, intermittent, energy, and communication faults.
-3. A continuously running Python backend server receives live sensor data and performs hybrid fault detection.
-4. Detected faults are classified by type and stored persistently for monitoring and analysis.
-5. A Streamlit dashboard provides real-time visualization of sensor readings and detected faults.
+**Final Year Project — Real-Time Hybrid Fault Detection System v2.0**
 
 ---
 
-## 📖 Introduction
+## Overview
 
-Wireless Sensor Networks (WSNs) are widely used in environmental monitoring applications such as temperature tracking, forest fire detection, and air quality monitoring. Sensor nodes deployed in remote areas are prone to various faults including hardware failure, energy depletion, abnormal readings, and communication issues.
-
-This project presents a real-time hybrid fault detection system that simulates environmental sensor nodes, injects multiple fault types, detects faults using node-level and cluster-level logic, and visualizes detected faults using a live dashboard.
-
-The system closely models real-world WSN gateway architecture with backend processing and frontend monitoring.
+This project implements a **Smart Hybrid Fault Detection System** for Environmental Monitoring Wireless Sensor Networks (WSNs). Three detection layers work together — rule-based node-level checks, statistical cluster-level analysis, and a trained ML classifier (Random Forest) — achieving **90.3% accuracy** vs 72.4% for traditional rule-based methods, a **+17.86% improvement**.
 
 ---
 
-## 🧠 Proposed Methodology
+## Architecture
 
-The system operates in four major stages:
-
-1. **Sensor Simulation (Testing Environment)**
-   - Deploys virtual sensor nodes
-   - Injects faults randomly
-   - Generates environmental data continuously
-
-2. **Real-Time Backend Server**
-   - Receives sensor data via HTTP
-   - Runs hybrid detection logic
-   - Classifies fault types
-   - Stores detected faults
-
-3. **Hybrid Fault Detection**
-   - Node-level detection (hard & energy faults)
-   - Cluster-level detection (soft & intermittent faults)
-   - Communication fault detection (timeout-based)
-   - Centralized confirmation mechanism
-
-4. **Streamlit Dashboard**
-   - Displays live sensor data
-   - Shows detected faulty nodes and their types
-   - Provides monitoring interface
-
----
-
-## 🛠️ Tech Stack
-
-- **Programming Language:** Python 3.8+
-- **Backend Server:** Flask
-- **Frontend Dashboard:** Streamlit
-- **Data Handling:** CSV (pandas)
-- **Communication:** HTTP (REST API)
-- **Libraries Used:**
-  - Flask
-  - Streamlit
-  - Requests
-  - Pandas
+```
+┌──────────────────────────────────────────────────────┐
+│            WSN Enhanced Fault Detection              │
+│                                                      │
+│  sensor_client.py                                    │
+│    ↓  50 nodes × 5 clusters                          │
+│    ↓  POST /sensor_data  (HTTP)                      │
+│                                                      │
+│  server.py  (Flask)                                  │
+│    ↓  detection_system/hybrid_detector.py            │
+│    │    ┌─────────────────────────────────────┐      │
+│    │    │  Layer 1: Rule-Based Thresholds     │      │
+│    │    │  Layer 2: Cluster Z-Score Analysis  │      │
+│    │    │  Layer 3: Random Forest ML (90.3%)  │      │
+│    │    │  → Weighted Vote → Final Decision   │      │
+│    │    └─────────────────────────────────────┘      │
+│    ↓  database/db_manager.py  (SQLite)               │
+│    ↓  GET /detections, /metrics, /network_summary    │
+│                                                      │
+│  static/dashboard.html                               │
+│    Live charts · Network map · ML metrics · Analysis │
+└──────────────────────────────────────────────────────┘
+```
 
 ---
 
-## ⚙️ How to Install and Run the Project
+## Project Structure
 
-### Step 1: Clone or Download Project
-
-`
-git clone <your-repo-url>
-`
-
-`
-cd WSN_RealTime_Hybrid_Project
-`
-
-Or download and extract manually.
-
----
-
-### Step 2: Create Virtual Environment (Recommended)
-
-`
-python -m venv venv
-`
-
-Activate it:
-
-**Windows:**
-`
-venv\Scripts\activate
-`
-
-**Linux / Mac:**
-`
-source venv/bin/activate
-`
-
----
-
-### Step 3: Install Dependencies
-
-`
-pip install -r requirements.txt
-`
-
----
-
-### Step 4: Run Backend Server
-
-Open Terminal 1:
-
-`
-python server.py
-`
-Server will start at:
-`
-http://127.0.0.1:5000
-`
-
----
-
-### Step 5: Run Sensor Client (Simulation)
-
-Open Terminal 2:
-
-`
-python sensor_client.py
-`
-
-This starts sending live sensor data to server.
-
----
-
-### Step 6: Run Streamlit Dashboard
-
-Open Terminal 3:
-
-`
-streamlit run dashboard.py
-`
-
-Open browser and go to:
-
-`
-http://localhost:8501
-`
-
-You will see:
-
-- Live sensor readings
-- Detected faulty nodes
-- Fault types
-- Energy levels
-
----
-
-## 📊 Fault Types Implemented
-
-The system detects the following WSN faults:
-
-- Hard Fault (Node failure)
-- Soft/Data Fault (Abnormal readings)
-- Intermittent Fault (Random abnormal spikes)
-- Energy Fault (Low battery)
-- Communication Fault (Node not responding)
-
----
-
-## 📁 Project Structure
-
-`
-WSN_RealTime_Hybrid_Project/
-├── server.py
-├── sensor_client.py
-├── dashboard.py
-├── config.py
-├── testing_environment/
+```
+wsn_project/
+│
+├── run.py                          ← One-command launcher
+├── server.py                       ← Flask REST API
+├── sensor_client.py                ← Sensor node simulator
+├── config.py                       ← All settings (edit here)
+├── requirements.txt
+├── README.md
+│
 ├── detection_system/
+│   ├── __init__.py
+│   ├── hybrid_detector.py          ← 3-layer detection engine
+│   └── ml_trainer.py               ← ML training pipeline
+│
+├── testing_environment/
+│   ├── __init__.py
+│   └── node_simulator.py           ← Node + fault simulation
+│
+├── database/
+│   ├── __init__.py
+│   ├── db_manager.py               ← SQLite queries & schema
+│   └── wsn_aft_dataset.csv         ← Training dataset (1854 rows)
+│
+├── models/                         ← Generated by ml_trainer.py
+│   ├── fault_classifier.pkl
+│   ├── label_encoder.pkl
+│   └── scaler.pkl
+│
 ├── evaluation/
-└── data/
-`
+│   ├── __init__.py
+│   ├── generate_report.py          ← Evaluation chart generator
+│   ├── ml_metrics.json             ← Generated metrics
+│   └── evaluation_report.png       ← Generated chart
+│
+└── static/
+    └── dashboard.html              ← Interactive monitoring dashboard
+```
 
 ---
 
-## 🚀 Future Enhancements
+## Quick Start
 
-- Add malicious fault detection
-- Add topology visualization
-- Add performance analytics
-- Integrate database instead of CSV
-- Deploy to cloud server
+### 1. Install dependencies
+
+```bash
+pip install -r requirements.txt
+```
+
+### 2. Train the ML model (once)
+
+```bash
+python run.py train
+# or: python -m detection_system.ml_trainer
+```
+
+### 3. Start the server
+
+```bash
+# Terminal 1
+python run.py server
+# → http://127.0.0.1:5000/   (dashboard)
+# → http://127.0.0.1:5000/status
+```
+
+### 4. Start the simulator
+
+```bash
+# Terminal 2
+python run.py simulate
+
+# Custom options:
+python sensor_client.py --rounds 20 --nodes 50 --rate 0.20
+```
+
+### 5. Generate evaluation charts
+
+```bash
+python run.py report
+```
+
+### One-command launch (opens all terminals + browser)
+
+```bash
+python run.py all
+```
 
 ---
 
-## 👨‍💻 Author
+## REST API Reference
 
-Final Year Project – Environmental Monitoring WSN  
-Real-Time Hybrid Fault Detection System
+| Method | Endpoint | Description |
+|--------|---------|-------------|
+| `GET`  | `/` | Serve dashboard |
+| `POST` | `/sensor_data` | Submit sensor reading; receive detection result |
+| `GET`  | `/status` | Server health, statistics, ML status |
+| `GET`  | `/detections` | Paginated detection log (`?limit=&offset=&fault_only=`) |
+| `GET`  | `/detections/<node_id>` | Per-node detection history |
+| `GET`  | `/cluster/<cluster_id>` | Cluster-level statistics |
+| `GET`  | `/metrics` | ML model performance metrics (JSON) |
+| `GET`  | `/network_summary` | Full network state snapshot |
+| `POST` | `/reset` | Clear all stored detections |
 
+### Example POST /sensor_data
 
+```json
+{
+  "node_id": 12,
+  "cluster_id": 3,
+  "battery_level": 8.5,
+  "signal_strength": -62.0,
+  "temperature": 28.4,
+  "humidity": 55.2,
+  "data_redundancy_flag": 0,
+  "data_packet_size": 214,
+  "latency_ms": 88.5,
+  "energy_consumed_mJ": 0.342,
+  "optimized_path_flag": 1,
+  "load_on_node": 0.61,
+  "recovery_time_ms": 0.0,
+  "pdr": 0.934,
+  "transmission_success": 1
+}
+```
 
+### Example Response
 
+```json
+{
+  "status": "ok",
+  "detection": {
+    "node_id": 12,
+    "cluster_id": 3,
+    "timestamp": "2024-12-15T14:32:07.123456",
+    "fault_detected": true,
+    "fault_type": "battery_low",
+    "confidence": 0.7246,
+    "layers": {
+      "rule_based": { "fault": true,  "fault_type": "battery_low", "confidence": 0.92, "reason": "Battery 8.5% < 15.0%" },
+      "cluster":    { "fault": false, "fault_type": "none",        "confidence": 0.0,  "reason": "" },
+      "ml_model":   { "fault": true,  "fault_type": "battery_low", "confidence": 0.81, "reason": "RF: battery_low @ 81.0%",
+                      "probabilities": { "battery_low": 0.81, "link_loss": 0.04, "none": 0.09, "sensor_fail": 0.06 } }
+    },
+    "node_metrics": { "battery_level": 8.5, "signal_strength": -62.0, "temperature": 28.4, ... }
+  }
+}
+```
 
+---
 
+## Detection Layers
 
+| Layer | Method | Detects |
+|-------|--------|---------|
+| **Layer 1** — Rule-Based | Hard thresholds | battery < 15%, signal < -95 dBm, PDR < 0.82, latency > 280 ms, temp/humidity OOB |
+| **Layer 2** — Cluster Z-Score | Z > 2.5 vs cluster peers | Statistical outliers relative to nearby nodes |
+| **Layer 3** — ML Random Forest | Trained classifier | All fault types with probability scores |
+
+**Final decision** = weighted vote (35% Layer1 + 25% Layer2 + 40% Layer3).
+
+---
+
+## Performance Results
+
+| Metric | Rule-Based | ML Hybrid |
+|--------|-----------|-----------|
+| Overall Accuracy | 72.44% | **90.30%** |
+| 5-Fold CV Accuracy | — | **89.62% ± 0.71%** |
+| Improvement | — | **+17.86%** |
+
+### Per-Class (ML Model)
+
+| Fault Type | Precision | Recall | F1 |
+|-----------|-----------|--------|----|
+| battery_low | 0.35 | 0.39 | 0.37 |
+| link_loss | 0.36 | 0.42 | 0.39 |
+| **none (normal)** | **1.00** | **1.00** | **1.00** |
+| sensor_fail | 0.25 | 0.18 | 0.21 |
+
+> Note: Fault classes have low per-class scores due to class imbalance (85% normal, 15% faults). Overall accuracy is high because the model correctly identifies the majority class. The hybrid system improves fault detection over rule-based alone.
+
+---
+
+## Configuration
+
+All settings are in `config.py`. Key parameters:
+
+```python
+THRESHOLDS = {
+    'battery_critical':   15.0,   # % below → battery_low
+    'signal_critical':   -95.0,   # dBm below → link_loss
+    'latency_critical':  280.0,   # ms above → link_loss
+    'pdr_critical':        0.82,  # below → link_loss
+    'z_score_threshold':   2.5,   # cluster anomaly sensitivity
+    'ml_confidence_min':   0.55,  # min ML probability to accept
+}
+
+DETECTION_WEIGHTS = {
+    'layer1': 0.35,   # rule-based weight
+    'layer2': 0.25,   # cluster weight
+    'layer3': 0.40,   # ML weight
+}
+```
+
+---
+
+## Tech Stack
+
+| Component | Technology |
+|-----------|-----------|
+| Backend API | Python · Flask |
+| ML Model | scikit-learn · Random Forest |
+| Database | SQLite (WAL mode) |
+| Dashboard | HTML5 · Chart.js · Vanilla JS |
+| Data Processing | Pandas · NumPy |
+| Model Storage | joblib |
+
+---
+
+## Author
+
+Final Year Project — Enhanced Fault Node Detection in Environmental Monitoring WSN

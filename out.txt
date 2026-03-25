@@ -1,0 +1,47 @@
+
+
+127.0.0.1 - - [13/Mar/2026 10:31:12] "POST /sensor_data HTTP/1.1" 200 -
+ Data Recieved: {'node_id': 1, 'cluster_id': 1, 'battery_level': 72.08, 'signal_strength': -52.43, 'temperature': 27.25, 'humidity': 61.8, 'data_redundancy_flag': 0, 
+ 'data_packet_size': 217, 'latency_ms': 41.72, 'energy_consumed_mJ': 0.918, 'optimized_path_flag': 1, 'load_on_node': 0.76, 'recovery_time_ms': 0.0, 'pdr': 0.855, 'transmission_success': 1}
+
+127.0.0.1 - - [13/Mar/2026 10:31:12] "POST /sensor_data HTTP/1.1" 200 -
+ Data Recieved: {'node_id': 4, 'cluster_id': 4, 'battery_level': 88.84, 'signal_strength': -97.22, 'temperature': 28.18, 'humidity': 47.06, 'data_redundancy_flag': 0, 
+ 'data_packet_size': 234, 'latency_ms': 350.23, 'energy_consumed_mJ': 1.571, 'optimized_path_flag': 0, 'load_on_node': 0.71, 'recovery_time_ms': 0.0, 'pdr': 0.777, 'transmission_success': 0}
+
+
+
+
+PS C:\Users\acer\Desktop\new> py .\sensor_client.py
+========================================================
+  WSN Sensor Node Simulator
+  Nodes: 50   Clusters: 5
+  Fault rate: 15%   Interval: 2.0s
+  Server: http://127.0.0.1:5000/sensor_data
+========================================================
+[Round    1] 10:21:38 — dispatching 50 readings 
+ 
+  ✓  (faults this round: 16)
+[Round    2] 10:21:44 — dispatching 50 readings 
+
+  ✓  (faults this round: 12)
+[Round    3] 10:21:50 — dispatching 50 readings 
+
+  ✓  (faults this round: 13)
+[Round    4] 10:21:56 — dispatching 50 readings 
+ 
+  ✓  (faults this round: 17)
+ ⏹  Simulation stopped by user.
+
+  ┌─ Stats after 4 rounds ─────────────────
+  │  Readings sent   : 183
+  │  Faults injected : 41
+  │  Faults detected : 29
+
+Simulation complete — 4 rounds run.
+
+
+
+
+
+
+
