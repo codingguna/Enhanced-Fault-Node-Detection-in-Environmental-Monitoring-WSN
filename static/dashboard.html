@@ -133,9 +133,69 @@ main{position:relative;z-index:10;padding:18px 28px}
 /* ── Spinner ── */
 .spin{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
+/* ── Offline Overlay ── */
+#offline-alert {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(5, 10, 15, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+  visibility: hidden;
+  opacity: 0;
+  transition: all 0.4s ease;
+}
+#offline-alert.visible {
+  visibility: visible;
+  opacity: 1;
+}
+.alert-card {
+  background: var(--panel);
+  border: 1px solid var(--danger);
+  padding: 40px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 0 50px rgba(255, 51, 85, 0.2);
+  max-width: 450px;
+}
+.alert-card h2 {
+  font-family: 'Oxanium', sans-serif;
+  color: var(--danger);
+  margin-bottom: 12px;
+  letter-spacing: 2px;
+}
+.alert-card p {
+  color: var(--text);
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+.cmd-box {
+  background: #000;
+  padding: 12px 18px;
+  border-radius: 6px;
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--green);
+  font-size: 14px;
+  border: 1px solid var(--border);
+}
 </style>
 </head>
 <body>
+
+<div id="offline-alert">
+  <div class="alert-card">
+    <h2>SYSTEM OFFLINE</h2>
+    <p>The dashboard is not connected to the backend server.</p>
+    <div class="cmd-box">python server.py</div>
+    <p style="font-size: 11px; color: var(--muted); margin-top: 20px;">
+      Run the command above to start monitoring live WSN data.
+    </p>
+  </div>
+</div>
 
 <header>
   <div class="logo">
@@ -450,12 +510,15 @@ function setLive(live) {
   if (isLive === live) return;
   isLive = live;
   const el = document.getElementById('conn-status');
+  const overlay = document.getElementById('offline-alert');
   if (live) {
     el.className = 'live'; el.textContent = '⬤ LIVE';
     document.getElementById('log-spin').style.display = 'inline-block';
+    overlay.classList.remove('visible');
   } else {
-    el.className = 'demo'; el.textContent = '⬤ DEMO MODE';
+    el.className = 'demo'; el.textContent = '⬤ OFFLINE';
     document.getElementById('log-spin').style.display = 'none';
+    overlay.classList.add('visible');
   }
 }
 
@@ -640,28 +703,13 @@ async function loadMetrics() {
   try {
     const res = await fetch(API + '/metrics', { signal: AbortSignal.timeout(2000) });
     if (res.ok) { mlMetrics = await res.json(); renderMetrics(); }
-    else renderDemoMetrics();
-  } catch { renderDemoMetrics(); }
+  } catch {
+    // No demo metrics
+  }
 }
 
 function renderDemoMetrics() {
-  mlMetrics = {
-    accuracy:.9030, cv_mean:.8962, cv_std:.0071, rule_based_accuracy:.7244,
-    classes:['battery_low','link_loss','none','sensor_fail'],
-    per_class:{
-      battery_low:  {precision:.35,recall:.39,f1:.37,support:18},
-      link_loss:    {precision:.36,recall:.42,f1:.39,support:19},
-      none:         {precision:1.00,recall:1.00,f1:1.00,support:317},
-      sensor_fail:  {precision:.25,recall:.18,f1:.21,support:17},
-    },
-    confusion_matrix:[[7,3,7,1],[2,8,9,0],[4,3,308,2],[3,2,9,3]],
-    feature_importance:{
-      recovery_time_ms:.343,energy_ratio:.057,humidity:.056,
-      signal_strength:.054,battery_level:.053,latency_ms:.052,
-      pdr:.048,temperature:.046,energy_consumed_mJ:.041,load_on_node:.038
-    }
-  };
-  renderMetrics();
+  // Demo data removed
 }
 
 function renderMetrics() {

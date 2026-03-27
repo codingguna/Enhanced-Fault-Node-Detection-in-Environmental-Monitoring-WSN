@@ -104,7 +104,7 @@ class HybridFaultDetector:
             z = abs((float(node[col]) - mu) / sigma)
             if z > THRESHOLDS['z_score_threshold']:
                 conf = min(0.95, 0.60 + 0.10 * z)
-                r.update(fault=True, fault_type=ftype, confidence=round(conf, 4),
+                r.update(fault=True, fault_type=ftype, confidence=float(round(conf, 4)),
                          reason=f"Z-score {z:.2f} on {col} (μ={mu:.2f}, σ={sigma:.2f})")
                 break
         return r
@@ -157,8 +157,8 @@ class HybridFaultDetector:
         final_fault = False
         if votes:
             final_type  = max(votes, key=votes.get)
-            final_conf  = round(votes[final_type], 4)
-            final_fault = final_conf >= THRESHOLDS['combined_threshold']
+            final_conf  = float(round(votes[final_type], 4))
+            final_fault = bool(final_conf >= THRESHOLDS['combined_threshold'])
 
         return {
             'node_id':        node.get('node_id'),
