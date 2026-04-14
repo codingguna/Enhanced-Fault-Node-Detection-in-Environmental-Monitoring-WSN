@@ -18,7 +18,8 @@ def _connect() -> sqlite3.Connection:
     conn = sqlite3.connect(PATHS['db'], check_same_thread=False)
     conn.row_factory = sqlite3.Row
     conn.execute("PRAGMA journal_mode=WAL;")
-    conn.execute("PRAGMA synchronous=NORMAL;")
+    # FULL favors durability (safer on unexpected shutdown/power loss).
+    conn.execute("PRAGMA synchronous=FULL;")
     return conn
 
 
@@ -187,15 +188,26 @@ def query_network_summary() -> dict:
         """).fetchall()
 
         node_states = conn.execute("""
-            SELECT node_id, cluster_id,
-                   MAX(timestamp)             AS last_seen,
-                   ROUND(AVG(battery_level), 2) AS avg_battery,
-                   SUM(fault_detected)        AS total_faults,
-                   COUNT(*)                   AS total_readings,
-                   fault_type                 AS last_fault_type
-            FROM detections
-            GROUP BY node_id
-            ORDER BY node_id
+            WITH latest AS (
+                SELECT d1.node_id, d1.fault_type
+                FROM detections d1
+                JOIN (
+                    SELECT node_id, MAX(id) AS max_id
+                    FROM detections
+                    GROUP BY node_id
+                ) d2 ON d1.node_id = d2.node_id AND d1.id = d2.max_id
+            )
+            SELECT d.node_id,
+                   MIN(d.cluster_id)            AS cluster_id,
+                   MAX(d.timestamp)             AS last_seen,
+                   ROUND(AVG(d.battery_level), 2) AS avg_battery,
+                   SUM(d.fault_detected)        AS total_faults,
+                   COUNT(*)                     AS total_readings,
+                   l.fault_type                 AS last_fault_type
+            FROM detections d
+            LEFT JOIN latest l ON d.node_id = l.node_id
+            GROUP BY d.node_id
+            ORDER BY d.node_id
         """).fetchall()
 
         hourly = conn.execute("""

@@ -36,16 +36,16 @@ def _send(reading: dict, injected: str, stats: dict, url: str):
                 stats['fn'] += 1
 
     except requests.exceptions.ConnectionError:
-        print("  ❌  Server not reachable — is server.py running?")
+        print("  [ERROR]  Server not reachable - is server.py running?")
     except Exception as exc:
-        print(f"  ⚠️  Send error: {exc}")
+        print(f"  [!]  Send error: {exc}")
 
 
 def _print_stats(stats: dict, rounds: int):
-    print(f"\n  ┌─ Stats after {rounds} rounds ─────────────────")
-    print(f"  │  Readings sent   : {stats['sent']}")
-    print(f"  │  Faults injected : {stats['injected']}")
-    print(f"  │  Faults detected : {stats['detected']}")
+    print(f"\n  === Stats after {rounds} rounds ===")
+    print(f"    Readings sent   : {stats['sent']}")
+    print(f"    Faults injected : {stats['injected']}")
+    print(f"    Faults detected : {stats['detected']}")
 
 
 def run_simulation(rounds: int    = 0,
@@ -70,9 +70,9 @@ def run_simulation(rounds: int    = 0,
         while True:
             round_num += 1
             ts = datetime.now().strftime('%H:%M:%S')
-            print(f"[Round {round_num:4d}] {ts} — dispatching {num_nodes} readings", end='', flush=True)
+            print(f"[Round {round_num:4d}] {ts} - dispatching {num_nodes} readings", end='', flush=True)
 
-            batch   = generate_round(fault_rate, SIMULATION['intermittent_rate'], num_nodes)
+            batch   = generate_round(fault_rate, num_nodes)
             threads = []
             for reading, injected in batch:
                 t = threading.Thread(
@@ -88,7 +88,7 @@ def run_simulation(rounds: int    = 0,
             for tt in threads: tt.start()
             for tt in threads: tt.join()
 
-            print(f"  ✓  (faults this round: {sum(1 for _, inj in batch if inj != 'none')})")
+            print(f"  [OK] (faults this round: {sum(1 for _, inj in batch if inj != 'none')})")
 
             if round_num % 5 == 0:
                 _print_stats(stats, round_num)
@@ -99,10 +99,10 @@ def run_simulation(rounds: int    = 0,
             time.sleep(interval)
 
     except KeyboardInterrupt:
-        print("\n\n  ⏹  Simulation stopped by user.")
+        print("\n\n  [STOP] Simulation stopped by user.")
 
     _print_stats(stats, round_num)
-    print(f"\nSimulation complete — {round_num} rounds run.")
+    print(f"\nSimulation complete - {round_num} rounds run.")
 
 
 if __name__ == '__main__':

@@ -1,5 +1,5 @@
 """
-run.py — One-command launcher for the WSN Fault Detection System.
+run.py — One-command launcher for Smart Hybrid Fault Node Detection in Environmental Monitoring Wireless Sensor Networks.
 
 Usage:
   python run.py train       # Train the ML model (required once)
@@ -26,29 +26,29 @@ def cmd(args, **kwargs):
 
 
 def train():
-    print("\n▶  Training ML model ...\n")
+    print("\n>  Training ML model ...\n")
     cmd(['-m', 'detection_system.ml_trainer'])
 
 
 def server():
-    print("\n▶  Starting Flask server on http://127.0.0.1:5000 ...\n")
-    print("   Dashboard → http://127.0.0.1:5000/")
+    print("\n>  Starting Flask server on http://127.0.0.1:5000 ...\n")
+    print("   Dashboard -> http://127.0.0.1:5000/")
     print("   Press Ctrl+C to stop.\n")
     # Check model exists
     from config import PATHS
     if not os.path.exists(PATHS['model']):
-        print("⚠️  ML model not found. Running trainer first ...\n")
+        print("[WARN]  ML model not found. Running trainer first ...\n")
         train()
     cmd(['server.py'])
 
 
 def simulate():
-    print("\n▶  Starting sensor simulator ...\n")
+    print("\n>  Starting sensor simulator ...\n")
     cmd(['sensor_client.py'] + sys.argv[2:])
 
 
 def report():
-    print("\n▶  Generating evaluation report ...\n")
+    print("\n>  Generating evaluation report ...\n")
     cmd(['-m', 'evaluation.generate_report'])
 
 
@@ -57,11 +57,11 @@ def status():
         r = requests.get('http://127.0.0.1:5000/status', timeout=3)
         d = r.json()
         print("\n  Server Status")
-        print("  " + "─"*40)
+        print("  " + "-"*40)
         for k, v in d.items():
             print(f"  {k:25s}: {v}")
     except Exception:
-        print("\n  ❌  Server not reachable at http://127.0.0.1:5000")
+        print("\n  [ERROR]  Server not reachable at http://127.0.0.1:5000")
         print("     Run: python run.py server")
 
 
@@ -98,10 +98,10 @@ def launch_all():
                     continue
         time.sleep(1.2)
 
-    print("\n  ⏳  Waiting 3 s for server to start ...")
+    print("\n  [WAIT]  Waiting 3 s for server to start ...")
     time.sleep(3)
     webbrowser.open('http://127.0.0.1:5000/')
-    print("  🌐  Dashboard opened in browser.")
+    print("  [BROWSER] Dashboard opened in browser.")
 
 
 if __name__ == '__main__':

@@ -43,7 +43,7 @@ print(f"Layer 2 confidence type: {type(l2['confidence'])}")
 
 try:
     json.dumps(result)
-    print("\n✅ Verification successful: Result is JSON serializable.")
+    print("\n[OK] Verification successful: Result is JSON serializable.")
 except TypeError as e:
-    print(f"\n❌ Verification failed: {e}")
+    print(f"\n[ERROR] Verification failed: {e}")
     exit(1)

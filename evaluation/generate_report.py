@@ -198,7 +198,7 @@ def generate():
     fig.savefig(out, dpi=150, bbox_inches='tight', facecolor=BG)
     plt.close(fig)
 
-    print(f"✅  Chart saved → {out}")
+    print(f"[OK]  Chart saved -> {out}")
     print("\n" + "=" * 52)
     print("  EVALUATION SUMMARY")
     print("=" * 52)

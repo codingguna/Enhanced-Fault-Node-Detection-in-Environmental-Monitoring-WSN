@@ -27,7 +27,6 @@ SIMULATION = {
     'num_nodes':         50,
     'num_clusters':       5,
     'fault_rate':         0.15,   # 15% of nodes get a fault per round
-    'intermittent_rate':  0.08,   # extra 8% get intermittent spike
     'round_interval':     2.0,    # seconds between rounds
     'thread_workers':    10,
     'server_url':        'http://127.0.0.1:5000/sensor_data',

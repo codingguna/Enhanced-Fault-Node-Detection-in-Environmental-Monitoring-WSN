@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>WSN Fault Detection — Command Center</title>
+<title>Smart Hybrid Fault Node Detection — Command Center</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oxanium:wght@300;400;600;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
@@ -47,7 +47,7 @@ main{position:relative;z-index:10;padding:18px 28px}
 .tab{display:none}.tab.active{display:block}
 
 /* ── KPI row ── */
-.kpi-row{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;margin-bottom:18px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
 .kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
 .kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
 .kpi.red::before{background:var(--danger)}.kpi.warn::before{background:var(--warn)}.kpi.green::before{background:var(--green)}.kpi.purple::before{background:var(--purple)}
@@ -70,7 +70,6 @@ main{position:relative;z-index:10;padding:18px 28px}
 .fb.link_loss{background:rgba(255,170,0,.14);color:var(--warn);border:1px solid rgba(255,170,0,.3)}
 .fb.sensor_fail{background:rgba(255,102,51,.14);color:var(--orange);border:1px solid rgba(255,102,51,.3)}
 .fb.none{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.2)}
-.fb.intermittent{background:rgba(199,125,255,.14);color:var(--purple);border:1px solid rgba(199,125,255,.3)}
 
 /* ── Confidence bar ── */
 .conf-wrap{display:flex;align-items:center;gap:7px}
@@ -116,6 +115,24 @@ main{position:relative;z-index:10;padding:18px 28px}
 .filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
 .fbtn{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--panel2);color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s}
 .fbtn:hover,.fbtn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08)}
+
+/* ── Test Lab ── */
+.test-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.test-field{display:flex;flex-direction:column;gap:5px}
+.test-label{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+.test-input{height:34px;border:1px solid var(--border);background:var(--panel2);color:var(--text);border-radius:8px;padding:0 10px;font-family:'Share Tech Mono',monospace;font-size:12px;outline:none}
+.test-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,212,255,.12)}
+.test-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.test-btn{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;cursor:pointer;transition:all .2s}
+.test-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08)}
+.test-btn.primary{background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.45);color:var(--accent)}
+.test-help{margin-top:10px;font-size:11px;color:var(--muted);font-family:'Share Tech Mono',monospace;line-height:1.5}
+.test-result-wrap{background:#07111b;border:1px solid var(--border);border-radius:10px;padding:12px;max-height:300px;overflow:auto}
+#test-result{white-space:pre-wrap;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text);line-height:1.5}
+.test-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.test-stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px}
+.test-stat .k{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+.test-stat .v{font-family:'Oxanium',sans-serif;font-size:16px;color:#fff;margin-top:4px}
 
 /* ── Node status list ── */
 .node-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(26,58,92,.35)}
@@ -190,7 +207,7 @@ main{position:relative;z-index:10;padding:18px 28px}
   <div class="alert-card">
     <h2>SYSTEM OFFLINE</h2>
     <p>The dashboard is not connected to the backend server.</p>
-    <div class="cmd-box">python server.py</div>
+    <div class="cmd-box">python run.py server</div>
     <p style="font-size: 11px; color: var(--muted); margin-top: 20px;">
       Run the command above to start monitoring live WSN data.
     </p>
@@ -215,9 +232,8 @@ main{position:relative;z-index:10;padding:18px 28px}
 <nav>
   <button class="active" onclick="goTab('overview',this)">Overview</button>
   <button onclick="goTab('faults',this)">Fault Log</button>
-  <button onclick="goTab('network',this)">Network Map</button>
-  <button onclick="goTab('ml',this)">ML Metrics</button>
   <button onclick="goTab('analysis',this)">Analysis</button>
+  <button onclick="goTab('test',this)">Test Lab</button>
 </nav>
 
 <main>
@@ -229,7 +245,6 @@ main{position:relative;z-index:10;padding:18px 28px}
     <div class="kpi"><div class="kpi-lbl">Total Readings</div><div class="kpi-val" id="k-readings">—</div><div class="kpi-sub">sensor data points</div></div>
     <div class="kpi red"><div class="kpi-lbl">Faults Detected</div><div class="kpi-val" id="k-faults">—</div><div class="kpi-sub" id="k-faultrate">—</div></div>
     <div class="kpi warn"><div class="kpi-lbl">Active Clusters</div><div class="kpi-val" id="k-clusters">—</div><div class="kpi-sub">monitoring groups</div></div>
-    <div class="kpi green"><div class="kpi-lbl">ML Accuracy</div><div class="kpi-val" id="k-ml">—</div><div class="kpi-sub">random forest</div></div>
     <div class="kpi purple"><div class="kpi-lbl">Last Reading</div><div class="kpi-val" style="font-size:15px" id="k-last">—</div><div class="kpi-sub">timestamp</div></div>
   </div>
 
@@ -265,7 +280,6 @@ main{position:relative;z-index:10;padding:18px 28px}
     <button class="fbtn" onclick="setFilter('battery_low',this)">Battery Low</button>
     <button class="fbtn" onclick="setFilter('link_loss',this)">Link Loss</button>
     <button class="fbtn" onclick="setFilter('sensor_fail',this)">Sensor Fail</button>
-    <button class="fbtn" onclick="setFilter('intermittent',this)">Intermittent</button>
   </div>
   <div class="panel">
     <div class="ph"><span class="ph-title">Detection Records</span><span class="ph-badge" id="flt-badge">0 records</span></div>
@@ -278,47 +292,6 @@ main{position:relative;z-index:10;padding:18px 28px}
         </tr></thead>
         <tbody id="flt-body"><tr><td colspan="11" class="empty">No records yet</td></tr></tbody>
       </table>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ NETWORK MAP ════════════════════════════════════════════════════════ -->
-<div class="tab" id="tab-network">
-  <div class="row r-32">
-    <div class="panel">
-      <div class="ph"><span class="ph-title">WSN Topology Map</span><span class="ph-badge">50 Nodes · 5 Clusters</span></div>
-      <div class="pb"><canvas id="netCanvas" height="430"></canvas></div>
-    </div>
-    <div class="panel">
-      <div class="ph"><span class="ph-title">Faulty Node Status</span></div>
-      <div class="pb" style="max-height:460px;overflow-y:auto" id="nodeList"><div class="empty">No faults detected yet</div></div>
-    </div>
-  </div>
-</div>
-
-<!-- ═══ ML METRICS ═════════════════════════════════════════════════════════ -->
-<div class="tab" id="tab-ml">
-  <div class="row r-2">
-    <div class="panel">
-      <div class="ph"><span class="ph-title">Model Performance</span><span class="ph-badge">Random Forest · 5-Fold CV</span></div>
-      <div class="pb">
-        <div class="metric-grid" id="metric-grid"><div class="empty" style="grid-column:1/-1">Run ml_trainer.py first, then /metrics endpoint</div></div>
-        <div id="cls-metrics"></div>
-      </div>
-    </div>
-    <div class="panel">
-      <div class="ph"><span class="ph-title">Rule-Based vs ML — Comparison</span></div>
-      <div class="pb"><div class="ch-lg"><canvas id="compChart"></canvas></div></div>
-    </div>
-  </div>
-  <div class="row r-2">
-    <div class="panel">
-      <div class="ph"><span class="ph-title">Top Feature Importance</span></div>
-      <div class="pb"><div class="ch-lg"><canvas id="featChart"></canvas></div></div>
-    </div>
-    <div class="panel">
-      <div class="ph"><span class="ph-title">Confusion Matrix</span></div>
-      <div class="pb"><div class="ch-lg"><canvas id="confChart"></canvas></div></div>
     </div>
   </div>
 </div>
@@ -347,18 +320,74 @@ main{position:relative;z-index:10;padding:18px 28px}
   </div>
 </div>
 
+<!-- ═══ TEST LAB ══════════════════════════════════════════════════════════ -->
+<div class="tab" id="tab-test">
+  <div class="row r-2">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Manual Sensor Input</span><span class="ph-badge">Validation Test</span></div>
+      <div class="pb">
+        <div class="test-grid">
+          <div class="test-field"><label class="test-label" for="t-node">Node ID</label><input class="test-input" id="t-node" type="number" min="1" max="50" value="1"></div>
+          <div class="test-field"><label class="test-label" for="t-cluster">Cluster ID</label><input class="test-input" id="t-cluster" type="number" min="1" max="5" value="1"></div>
+          <div class="test-field"><label class="test-label" for="t-battery">Battery Level (%)</label><input class="test-input" id="t-battery" type="number" step="0.01" value="80"></div>
+          <div class="test-field"><label class="test-label" for="t-signal">Signal Strength (dBm)</label><input class="test-input" id="t-signal" type="number" step="0.01" value="-60"></div>
+          <div class="test-field"><label class="test-label" for="t-temp">Temperature (C)</label><input class="test-input" id="t-temp" type="number" step="0.01" value="25"></div>
+          <div class="test-field"><label class="test-label" for="t-humidity">Humidity (%)</label><input class="test-input" id="t-humidity" type="number" step="0.01" value="50"></div>
+          <div class="test-field"><label class="test-label" for="t-latency">Latency (ms)</label><input class="test-input" id="t-latency" type="number" step="0.01" value="100"></div>
+          <div class="test-field"><label class="test-label" for="t-pdr">Packet Delivery Ratio</label><input class="test-input" id="t-pdr" type="number" step="0.001" min="0" max="1" value="0.95"></div>
+        </div>
+        <div class="test-actions">
+          <button class="test-btn primary" onclick="sendCustomReading()">Send Custom Reading</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Fault Types (Defined)</span><span class="ph-badge">3 Fault Classes</span></div>
+      <div class="pb">
+        <div class="filters">
+          <button class="fbtn" onclick="fillTestByType('none')">none (normal)</button>
+          <button class="fbtn" onclick="fillTestByType('battery_low')">battery_low</button>
+          <button class="fbtn" onclick="fillTestByType('link_loss')">link_loss</button>
+          <button class="fbtn" onclick="fillTestByType('sensor_fail')">sensor_fail</button>
+        </div>
+        <div class="test-actions">
+          <button class="test-btn" onclick="sendNormalReading()">Send Random Normal Reading</button>
+          <button class="test-btn" onclick="sendFaultReading()">Send Random Fault Reading</button>
+        </div>
+        <div class="test-help">
+          Normal reading uses healthy value ranges. Fault reading injects one random fault pattern.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="ph-title">Last Test Result</span><span class="ph-badge">JSON Response</span></div>
+    <div class="pb">
+      <div class="test-summary">
+        <div class="test-stat"><div class="k">HTTP Status</div><div class="v" id="t-http">—</div></div>
+        <div class="test-stat"><div class="k">Fault Detected</div><div class="v" id="t-detected">—</div></div>
+        <div class="test-stat"><div class="k">Fault Type</div><div class="v" id="t-type">—</div></div>
+        <div class="test-stat"><div class="k">Confidence</div><div class="v" id="t-conf">—</div></div>
+      </div>
+      <div class="test-result-wrap"><pre id="test-result">No test sent yet.</pre></div>
+    </div>
+  </div>
+</div>
+
 </main>
 
 <script>
 // ════════════════════════════════════════════════════════
 //  CONSTANTS
 // ════════════════════════════════════════════════════════
-const API      = 'http://127.0.0.1:5000';
+const API      = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
+  ? window.location.origin
+  : 'http://127.0.0.1:5000';
 const POLL_MS  = 3000;
 const MAX_LOG  = 60;
 const TL_BINS  = 30;
 const CLUSTER_COLORS = ['#00d4ff','#00ff88','#ffaa00','#ff6633','#c77dff'];
-const FAULT_CSS = { battery_low:'danger', link_loss:'warn', sensor_fail:'orange', none:'green', intermittent:'purple' };
+const FAULT_CSS = { battery_low:'danger', link_loss:'warn', sensor_fail:'orange', none:'green' };
 
 // Fixed topology positions for 50 nodes
 const NODE_POS = {};
@@ -374,12 +403,22 @@ for (let i = 1; i <= 50; i++) {
 //  STATE
 // ════════════════════════════════════════════════════════
 let detections   = [];
-let mlMetrics    = null;
 let lastId       = 0;
 let currentFilter= 'all';
 let charts       = {};
 let isLive       = false;
 let analysisBuilt= false;
+let pollTimer    = null;
+let reconnectTimer = null;
+
+function fetchWithTimeout(url, timeoutMs = 2500, options = {}) {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs) });
+  }
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+}
 
 // ════════════════════════════════════════════════════════
 //  CLOCK
@@ -395,8 +434,6 @@ function goTab(id, btn) {
   document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
   document.getElementById('tab-' + id).classList.add('active');
   btn.classList.add('active');
-  if (id === 'network') drawNetwork();
-  if (id === 'ml')      loadMetrics();
   if (id === 'analysis') buildAnalysis();
 }
 
@@ -466,8 +503,8 @@ function initCharts() {
 async function poll() {
   try {
     const [sRes, dRes] = await Promise.all([
-      fetch(API + '/status',          { signal: AbortSignal.timeout(2500) }),
-      fetch(API + '/detections?limit=200', { signal: AbortSignal.timeout(2500) })
+      fetchWithTimeout(API + '/status', 2500),
+      fetchWithTimeout(API + '/detections?limit=200', 2500)
     ]);
     if (!sRes.ok || !dRes.ok) throw new Error();
 
@@ -486,24 +523,42 @@ async function poll() {
 
     const rows = d.data ?? [];
     const newRows = rows.filter(r => r.id > lastId);
-
-    if (newRows.length) {
-      lastId      = Math.max(...rows.map(r => r.id));
-      detections  = rows;
-      renderFaultTable();
-      renderTimeline();
-      renderDonut();
-      renderBattery();
-      renderAlertLog(newRows);
-      document.getElementById('tl-badge').textContent = `${rows.filter(r=>r.fault_detected).length} faults`;
-      if (document.getElementById('tab-network').classList.contains('active')) drawNetwork();
-      if (document.getElementById('tab-analysis').classList.contains('active')) buildAnalysis(true);
+    if (rows.length) {
+      lastId = Math.max(lastId, ...rows.map(r => r.id));
     }
+    detections = rows;
+    renderFaultTable();
+    renderTimeline();
+    renderDonut();
+    renderBattery();
+    if (newRows.length) renderAlertLog(newRows);
+    document.getElementById('tl-badge').textContent = `${rows.filter(r=>r.fault_detected).length} faults`;
+    if (document.getElementById('tab-analysis').classList.contains('active')) buildAnalysis(true);
 
     setLive(true);
   } catch {
     setLive(false);
   }
+}
+
+function startPolling() {
+  if (!pollTimer) {
+    pollTimer = setInterval(poll, POLL_MS);
+  }
+}
+
+function clearLiveViews() {
+  detections = [];
+  renderFaultTable();
+  renderTimeline();
+  renderDonut();
+  renderBattery();
+  document.getElementById('tl-badge').textContent = '0 faults';
+  document.getElementById('k-readings').textContent = '—';
+  document.getElementById('k-faults').textContent = '—';
+  document.getElementById('k-faultrate').textContent = '—';
+  document.getElementById('k-clusters').textContent = '—';
+  document.getElementById('k-last').textContent = '—';
 }
 
 function setLive(live) {
@@ -515,6 +570,10 @@ function setLive(live) {
     el.className = 'live'; el.textContent = '⬤ LIVE';
     document.getElementById('log-spin').style.display = 'inline-block';
     overlay.classList.remove('visible');
+    if (reconnectTimer) {
+      clearInterval(reconnectTimer);
+      reconnectTimer = null;
+    }
   } else {
     el.className = 'demo'; el.textContent = '⬤ OFFLINE';
     document.getElementById('log-spin').style.display = 'none';
@@ -617,191 +676,150 @@ function renderFaultTable() {
   }).join('');
 }
 
-// ── Network map ────────────────────────────────────────────────────────────
-function drawNetwork() {
-  const canvas = document.getElementById('netCanvas');
-  const W = canvas.offsetWidth, H = 430;
-  canvas.width = W; canvas.height = H;
-  const ctx = canvas.getContext('2d');
-  ctx.clearRect(0,0,W,H);
-
-  // Latest state per node
-  const ns = {};
-  detections.forEach(r => { if (!ns[r.node_id] || ns[r.node_id].id < r.id) ns[r.node_id] = r; });
-
-  // Cluster zones
-  for (let c = 1; c <= 5; c++) {
-    const pts = Object.entries(NODE_POS).filter(([,p])=>p.cluster===c);
-    const xs  = pts.map(([,p])=>p.x*W), ys = pts.map(([,p])=>p.y*H);
-    const cx  = xs.reduce((a,b)=>a+b,0)/xs.length;
-    const cy  = ys.reduce((a,b)=>a+b,0)/ys.length;
-    ctx.beginPath(); ctx.arc(cx,cy,72,0,Math.PI*2);
-    ctx.strokeStyle = CLUSTER_COLORS[c-1]+'22'; ctx.lineWidth=1;
-    ctx.setLineDash([4,4]); ctx.stroke(); ctx.setLineDash([]);
-    ctx.fillStyle   = CLUSTER_COLORS[c-1]+'07'; ctx.fill();
-    ctx.fillStyle   = CLUSTER_COLORS[c-1]+'80'; ctx.font="9px 'Share Tech Mono'";
-    ctx.fillText(`C${c}`, cx-6, cy-60);
-  }
-
-  // Intra-cluster edges
-  const ids = Object.keys(NODE_POS).map(Number);
-  ids.forEach(i => ids.forEach(j => {
-    if (j<=i || NODE_POS[i].cluster !== NODE_POS[j].cluster) return;
-    ctx.beginPath();
-    ctx.moveTo(NODE_POS[i].x*W, NODE_POS[i].y*H);
-    ctx.lineTo(NODE_POS[j].x*W, NODE_POS[j].y*H);
-    ctx.strokeStyle='rgba(26,58,92,.45)'; ctx.lineWidth=.5; ctx.stroke();
-  }));
-
-  // Nodes
-  ids.forEach(id => {
-    const { x, y } = NODE_POS[id];
-    const px = x*W, py = y*H;
-    const r  = ns[id];
-    const ft = r?.fault_type || 'none';
-    const faulted = r?.fault_detected;
-    let col = '#00d4ff';
-    if (faulted) {
-      if (ft==='battery_low') col='#ff3355';
-      else if (ft==='link_loss') col='#ffaa00';
-      else if (ft==='sensor_fail') col='#ff6633';
-      else col='#c77dff';
-    }
-    if (faulted) {
-      ctx.beginPath(); ctx.arc(px,py,11,0,Math.PI*2);
-      ctx.fillStyle=col+'28'; ctx.fill();
-    }
-    ctx.beginPath(); ctx.arc(px,py,5,0,Math.PI*2);
-    ctx.fillStyle=col; ctx.fill();
-    ctx.strokeStyle=faulted?col:'rgba(0,212,255,.25)'; ctx.lineWidth=1; ctx.stroke();
-    ctx.fillStyle='#3a5a7a'; ctx.font="8px 'Share Tech Mono'";
-    ctx.fillText(id, px+7, py+3);
-  });
-
-  // Legend
-  [['#00d4ff','Normal'],['#ff3355','Battery Low'],['#ffaa00','Link Loss'],['#ff6633','Sensor Fail']].forEach(([col,lbl],i)=>{
-    ctx.beginPath(); ctx.arc(12, H-10-i*15, 4, 0, Math.PI*2);
-    ctx.fillStyle=col; ctx.fill();
-    ctx.fillStyle='#4a6a8a'; ctx.font="8px 'Share Tech Mono'";
-    ctx.fillText(lbl, 22, H-7-i*15);
-  });
-
-  // Faulty node list
-  const list = document.getElementById('nodeList');
-  const faulty = Object.entries(ns).filter(([,r])=>r.fault_detected);
-  if (!faulty.length) { list.innerHTML='<div class="empty">No faults detected yet</div>'; return; }
-  list.innerHTML = faulty.map(([nid,r])=>`
-    <div class="node-item">
-      <div><div class="node-id">Node ${nid}</div><div class="node-sub">Cluster ${r.cluster_id} · ${r.timestamp?.slice(11,19)||'—'}</div></div>
-      <span class="fb ${r.fault_type}">${r.fault_type?.replace('_',' ').toUpperCase()}</span>
-    </div>`).join('');
+// ── Test lab helpers ───────────────────────────────────────────────────────
+function buildPayload(overrides = {}) {
+  return {
+    node_id: Number(overrides.node_id ?? 1),
+    cluster_id: Number(overrides.cluster_id ?? 1),
+    battery_level: Number(overrides.battery_level ?? 80),
+    signal_strength: Number(overrides.signal_strength ?? -60),
+    temperature: Number(overrides.temperature ?? 25),
+    humidity: Number(overrides.humidity ?? 50),
+    data_redundancy_flag: 0,
+    data_packet_size: 256,
+    latency_ms: Number(overrides.latency_ms ?? 100),
+    energy_consumed_mJ: Number(overrides.energy_consumed_mJ ?? 0.5),
+    optimized_path_flag: 1,
+    load_on_node: Number(overrides.load_on_node ?? 0.6),
+    recovery_time_ms: 0.0,
+    pdr: Number(overrides.pdr ?? 0.95),
+    transmission_success: 1
+  };
 }
 
-// ── ML Metrics ─────────────────────────────────────────────────────────────
-async function loadMetrics() {
-  if (mlMetrics) { renderMetrics(); return; }
+function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function randomFloat(min, max, d = 2) { return Number((Math.random() * (max - min) + min).toFixed(d)); }
+function setTestInputs(payload) {
+  document.getElementById('t-node').value = payload.node_id;
+  document.getElementById('t-cluster').value = payload.cluster_id;
+  document.getElementById('t-battery').value = payload.battery_level;
+  document.getElementById('t-signal').value = payload.signal_strength;
+  document.getElementById('t-temp').value = payload.temperature;
+  document.getElementById('t-humidity').value = payload.humidity;
+  document.getElementById('t-latency').value = payload.latency_ms;
+  document.getElementById('t-pdr').value = payload.pdr;
+}
+
+function fillTestByType(type) {
+  const base = {
+    node_id: randomInt(1, 50),
+    cluster_id: randomInt(1, 5),
+    battery_level: randomFloat(70, 95, 2),
+    signal_strength: randomFloat(-80, -45, 2),
+    temperature: randomFloat(22, 35, 2),
+    humidity: randomFloat(35, 75, 2),
+    latency_ms: randomFloat(40, 180, 2),
+    pdr: randomFloat(0.9, 0.99, 3)
+  };
+
+  if (type === 'battery_low') {
+    base.battery_level = randomFloat(2, 12, 2);
+  } else if (type === 'link_loss') {
+    base.signal_strength = randomFloat(-100, -95, 2);
+    base.latency_ms = randomFloat(290, 420, 2);
+    base.pdr = randomFloat(0.75, 0.81, 3);
+  } else if (type === 'sensor_fail') {
+    if (Math.random() > 0.5) base.temperature = randomFloat(60, 80, 2);
+    else base.humidity = randomFloat(97, 110, 2);
+  }
+
+  setTestInputs(base);
+}
+
+async function sendToServer(payload, label) {
+  const out = document.getElementById('test-result');
+  out.textContent = `Sending ${label} payload...`;
+  document.getElementById('t-http').textContent = '...';
+  document.getElementById('t-detected').textContent = '...';
+  document.getElementById('t-type').textContent = '...';
+  document.getElementById('t-conf').textContent = '...';
   try {
-    const res = await fetch(API + '/metrics', { signal: AbortSignal.timeout(2000) });
-    if (res.ok) { mlMetrics = await res.json(); renderMetrics(); }
-  } catch {
-    // No demo metrics
+    const res = await fetchWithTimeout(API + '/sensor_data', 3000, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    const det = data?.detection || {};
+    document.getElementById('t-http').textContent = String(res.status);
+    document.getElementById('t-detected').textContent = det.fault_detected ? 'YES' : 'NO';
+    document.getElementById('t-type').textContent = det.fault_type || 'none';
+    document.getElementById('t-conf').textContent = det.confidence != null ? `${(det.confidence * 100).toFixed(1)}%` : '0.0%';
+    out.textContent = JSON.stringify({ request_type: label, payload, response: data }, null, 2);
+    poll();
+  } catch (err) {
+    document.getElementById('t-http').textContent = 'ERR';
+    document.getElementById('t-detected').textContent = '-';
+    document.getElementById('t-type').textContent = '-';
+    document.getElementById('t-conf').textContent = '-';
+    out.textContent = `Request failed: ${err}`;
   }
 }
 
-function renderDemoMetrics() {
-  // Demo data removed
+async function sendCustomReading() {
+  const payload = buildPayload({
+    node_id: document.getElementById('t-node').value,
+    cluster_id: document.getElementById('t-cluster').value,
+    battery_level: document.getElementById('t-battery').value,
+    signal_strength: document.getElementById('t-signal').value,
+    temperature: document.getElementById('t-temp').value,
+    humidity: document.getElementById('t-humidity').value,
+    latency_ms: document.getElementById('t-latency').value,
+    pdr: document.getElementById('t-pdr').value
+  });
+  await sendToServer(payload, 'custom');
 }
 
-function renderMetrics() {
-  const m = mlMetrics;
-  document.getElementById('metric-grid').innerHTML = [
-    ['Accuracy',   `${(m.accuracy*100).toFixed(1)}%`],
-    ['CV Mean',    `${(m.cv_mean*100).toFixed(1)}%`],
-    ['CV Std',     `±${(m.cv_std*100).toFixed(1)}%`],
-    ['Baseline',   `${(m.rule_based_accuracy*100).toFixed(1)}%`],
-  ].map(([l,v])=>`<div class="metric-card"><div class="val">${v}</div><div class="lbl">${l}</div></div>`).join('');
+async function sendNormalReading() {
+  const payload = buildPayload({
+    node_id: randomInt(1, 50),
+    cluster_id: randomInt(1, 5),
+    battery_level: randomFloat(60, 95, 2),
+    signal_strength: randomFloat(-80, -40, 2),
+    temperature: randomFloat(20, 35, 2),
+    humidity: randomFloat(35, 75, 2),
+    latency_ms: randomFloat(40, 180, 2),
+    pdr: randomFloat(0.88, 0.99, 3),
+    energy_consumed_mJ: randomFloat(0.1, 1.0, 3),
+    load_on_node: randomFloat(0.2, 0.8, 2)
+  });
+  await sendToServer(payload, 'normal_random');
+}
 
-  document.getElementById('cls-metrics').innerHTML =
-    `<div style="margin:14px 0 8px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'Share Tech Mono'">Per-Class Breakdown</div>`+
-    m.classes.map(cls => {
-      const pc = m.per_class[cls];
-      return `<div class="cls-row">
-        <span class="cls-name">${cls}</span>
-        <div class="cls-bars">${['precision','recall','f1'].map(met=>`
-          <div class="bar-item">
-            <div class="bar-lbl">${met}</div>
-            <div class="bar-track"><div class="bar-fill" style="width:${(pc[met]*100).toFixed(0)}%"></div></div>
-            <div class="bar-num">${(pc[met]*100).toFixed(0)}%</div>
-          </div>`).join('')}</div>
-      </div>`;
-    }).join('');
-
-  // Comparison chart
-  if (!charts.comp) {
-    const imp  = m.improvement ?? (m.accuracy - m.rule_based_accuracy);
-    const cats = ['Accuracy','Fault Prec.','Fault Recall'];
-    const rb   = [m.rule_based_accuracy*100, 14.9, 18.7];
-    const ml   = [m.accuracy*100, 38.7, 39.7];
-    charts.comp = new Chart(document.getElementById('compChart'),{
-      type:'bar',
-      data:{labels:cats,datasets:[
-        {label:'Rule-Based',data:rb,backgroundColor:'rgba(255,170,0,.65)',borderColor:'#ffaa00',borderWidth:1,borderRadius:4},
-        {label:'ML Hybrid', data:ml,backgroundColor:'rgba(0,212,255,.65)',borderColor:'#00d4ff',borderWidth:1,borderRadius:4}
-      ]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:true,labels:{color:'#c8e0f0',font:{size:9},boxWidth:10}}},
-        scales:{
-          x:{grid:{display:false},ticks:{color:'#4a6a8a'}},
-          y:{max:110,grid:{color:'#0d2035'},ticks:{color:'#4a6a8a',callback:v=>v+'%'}}
-        }
-      }
-    });
+async function sendFaultReading() {
+  const payload = buildPayload({
+    node_id: randomInt(1, 50),
+    cluster_id: randomInt(1, 5)
+  });
+  const ftypes = ['battery_low', 'link_loss', 'sensor_fail'];
+  const fault = ftypes[randomInt(0, ftypes.length - 1)];
+  if (fault === 'battery_low') {
+    payload.battery_level = randomFloat(2, 12, 2);
+    payload.energy_consumed_mJ = randomFloat(1.8, 2.0, 3);
+  } else if (fault === 'link_loss') {
+    payload.signal_strength = randomFloat(-100, -95, 2);
+    payload.latency_ms = randomFloat(290, 420, 2);
+    payload.pdr = randomFloat(0.75, 0.81, 3);
+    payload.transmission_success = 0;
+  } else if (fault === 'sensor_fail') {
+    if (Math.random() > 0.5) payload.temperature = randomFloat(60, 80, 2);
+    else payload.humidity = randomFloat(97, 110, 2);
+  } else {
+    payload.temperature = randomFloat(45, 70, 2);
+    payload.latency_ms = randomFloat(220, 360, 2);
+    payload.pdr = randomFloat(0.6, 0.84, 3);
   }
-
-  // Feature chart
-  if (!charts.feat) {
-    const fi    = m.feature_importance;
-    const feats = Object.keys(fi).slice(0,8);
-    charts.feat = new Chart(document.getElementById('featChart'),{
-      type:'bar',
-      data:{labels:feats,datasets:[{data:feats.map(f=>fi[f]*100),
-        backgroundColor:'rgba(0,255,136,.65)',borderColor:'#00ff88',borderWidth:1,borderRadius:3}]},
-      options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
-        scales:{
-          x:{grid:{color:'#0d2035'},ticks:{color:'#4a6a8a',callback:v=>v.toFixed(1)+'%'}},
-          y:{grid:{display:false},ticks:{color:'#c8e0f0'}}
-        }
-      }
-    });
-  }
-
-  // Confusion matrix as heatmap
-  if (!charts.conf) {
-    const cm  = m.confusion_matrix;
-    const cls = m.classes;
-    const data = [];
-    cm.forEach((row,i) => row.forEach((v,j) => data.push({x:j,y:i,v})));
-    const maxV = Math.max(...cm.flat());
-    charts.conf = new Chart(document.getElementById('confChart'),{
-      type:'scatter',
-      data:{datasets:[{
-        data:data,
-        backgroundColor: d => `rgba(0,212,255,${d.raw.v/maxV*0.85+0.05})`,
-        pointStyle:'rect',
-        radius: 28,
-      }]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{callbacks:{label:d=>`${d.raw.v} predictions`}}},
-        scales:{
-          x:{min:-.5,max:cls.length-.5,grid:{color:'#0d2035'},
-            ticks:{color:'#c8e0f0',callback:v=>cls[v]||'',stepSize:1}},
-          y:{min:-.5,max:cls.length-.5,grid:{color:'#0d2035'},reverse:true,
-            ticks:{color:'#c8e0f0',callback:v=>cls[v]||'',stepSize:1}}
-        }
-      }
-    });
-  }
+  await sendToServer(payload, `fault_random:${fault}`);
 }
 
 // ── Analysis tab ───────────────────────────────────────────────────────────
@@ -898,57 +916,6 @@ function buildAnalysis(force=false) {
 }
 
 // ════════════════════════════════════════════════════════
-//  DEMO DATA  (shown when server is offline)
-// ════════════════════════════════════════════════════════
-function loadDemo() {
-  const ftypes = ['none','none','none','none','battery_low','link_loss','sensor_fail','intermittent'];
-  const demo   = [];
-  for (let i = 1; i <= 150; i++) {
-    const ft = ftypes[Math.floor(Math.random()*ftypes.length)];
-    const flt= ft !== 'none';
-    demo.push({
-      id: i,
-      node_id: Math.ceil(Math.random()*50),
-      cluster_id: Math.ceil(Math.random()*5),
-      timestamp: new Date(Date.now()-(150-i)*10000).toISOString(),
-      fault_detected: flt?1:0,
-      fault_type: ft,
-      confidence: flt ? +(Math.random()*.45+.5).toFixed(4) : 0,
-      layer1_fault: flt && Math.random()>.6?1:0,
-      layer2_fault: flt && Math.random()>.7?1:0,
-      layer3_fault: flt && Math.random()>.4?1:0,
-      battery_level:  +(Math.random()*85+10).toFixed(2),
-      signal_strength:-(+(Math.random()*55+30).toFixed(2)),
-      temperature:    +(Math.random()*28+12).toFixed(2),
-      humidity:       +(Math.random()*55+25).toFixed(2),
-      latency_ms:     +(Math.random()*240+20).toFixed(2),
-      pdr:            +(Math.random()*.14+.85).toFixed(3),
-    });
-  }
-  detections = demo;
-  lastId = 150;
-
-  const faults = demo.filter(r=>r.fault_detected).length;
-  document.getElementById('k-readings').textContent  = '150';
-  document.getElementById('k-faults').textContent    = faults;
-  document.getElementById('k-faultrate').textContent = `${(faults/150*100).toFixed(1)}% rate (DEMO)`;
-  document.getElementById('k-clusters').textContent  = '5';
-  document.getElementById('k-ml').textContent        = '90.3%';
-  document.getElementById('k-last').textContent      = new Date().toLocaleTimeString('en-US',{hour12:false});
-  document.getElementById('tl-badge').textContent    = `${faults} faults`;
-
-  renderFaultTable(); renderTimeline(); renderDonut(); renderBattery();
-  renderAlertLog(demo.filter(r=>r.fault_detected).slice(-8));
-
-  // Demo log message
-  const log = document.getElementById('alertLog');
-  const div = document.createElement('div');
-  div.className='log-entry';
-  div.innerHTML='<span class="log-ts">DEMO</span><span class="log-warn">Server offline — showing demo data. Start server.py to connect live.</span>';
-  log.appendChild(div);
-}
-
-// ════════════════════════════════════════════════════════
 //  BOOT
 // ════════════════════════════════════════════════════════
 window.addEventListener('DOMContentLoaded', async () => {
@@ -956,21 +923,20 @@ window.addEventListener('DOMContentLoaded', async () => {
 
   // Try server
   try {
-    const r = await fetch(API + '/status', { signal: AbortSignal.timeout(2000) });
+    const r = await fetchWithTimeout(API + '/status', 2000);
     if (r.ok) {
       setLive(true);
-      setInterval(poll, POLL_MS);
+      startPolling();
       poll();
     } else throw new Error();
   } catch {
-    loadDemo();
-    renderDemoMetrics();
+    clearLiveViews();
     setLive(false);
     // Keep trying every 5 s
-    setInterval(async () => {
+    reconnectTimer = setInterval(async () => {
       try {
-        const r = await fetch(API + '/status', { signal: AbortSignal.timeout(1500) });
-        if (r.ok) { setLive(true); setInterval(poll, POLL_MS); poll(); }
+        const r = await fetchWithTimeout(API + '/status', 1500);
+        if (r.ok) { setLive(true); startPolling(); poll(); }
       } catch {}
     }, 5000);
   }

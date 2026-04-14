@@ -1,8 +1,8 @@
 """
-server.py — WSN Fault Detection REST API Server
+server.py - Smart Hybrid Fault Node Detection REST API Server
 
 Endpoints
-─────────
+---------
 POST  /sensor_data           Receive a sensor reading; run detection; store result
 GET   /status                Server health, statistics, ML model status
 GET   /detections            Paginated detection log  (?limit=&offset=&fault_only=)
@@ -34,25 +34,55 @@ from database.db_manager import (
 app   = Flask(__name__, static_folder='static')
 _lock = threading.Lock()
 
-# ── Cluster peer cache (used by Layer 2) ───────────────────────────────────
-_cluster_cache: dict[int, list] = {}
+# -- Cluster peer cache (used by Layer 2) ------------------------------------
+_cluster_cache: dict[int, dict[int, dict]] = {}
 _MAX_PEERS = 20
 
+def _parse_int(value, field_name: str):
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"'{field_name}' must be an integer")
+
+def _parse_float(value, field_name: str):
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        raise ValueError(f"'{field_name}' must be a number")
+
+def _validate_sensor_payload(node: dict):
+    int_fields = ['node_id', 'cluster_id']
+    float_fields = [
+        'battery_level', 'signal_strength', 'temperature',
+        'humidity', 'latency_ms', 'pdr'
+    ]
+
+    for field in int_fields:
+        node[field] = _parse_int(node.get(field), field)
+    for field in float_fields:
+        node[field] = _parse_float(node.get(field), field)
+
 def _update_cluster_cache(node: dict):
-    cid = int(node.get('cluster_id', 0))
+    cid = _parse_int(node.get('cluster_id', 0), 'cluster_id')
+    nid = _parse_int(node.get('node_id', 0), 'node_id')
     if cid not in _cluster_cache:
-        _cluster_cache[cid] = []
-    _cluster_cache[cid].append(node)
+        _cluster_cache[cid] = {}
+    _cluster_cache[cid][nid] = node
+    
+    # Optional: limit cache size if many nodes exist, but here we only have 50 nodes total
     if len(_cluster_cache[cid]) > _MAX_PEERS:
-        _cluster_cache[cid].pop(0)
+        oldest_nid = next(iter(_cluster_cache[cid]))
+        if oldest_nid != nid:
+            _cluster_cache[cid].pop(oldest_nid, None)
 
 def _get_peers(node: dict) -> list:
-    cid = int(node.get('cluster_id', 0))
-    nid = node.get('node_id')
-    return [n for n in _cluster_cache.get(cid, []) if n.get('node_id') != nid]
+    cid = _parse_int(node.get('cluster_id', 0), 'cluster_id')
+    nid = _parse_int(node.get('node_id', 0), 'node_id')
+    cluster = _cluster_cache.get(cid, {})
+    return [data for id, data in cluster.items() if id != nid]
 
 
-# ══ Routes ══════════════════════════════════════════════════════════════════
+# === Routes ================================================================
 
 @app.route('/')
 def index():
@@ -63,7 +93,6 @@ def index():
 @app.route('/sensor_data', methods=['POST'])
 def receive_sensor_data():
     node = request.get_json(force=True, silent=True)
-    print('\n Data Recieved:', node)
     if not node:
         return jsonify(error='Request body must be JSON'), 400
 
@@ -72,6 +101,10 @@ def receive_sensor_data():
     missing  = [k for k in required if k not in node]
     if missing:
         return jsonify(error=f'Missing required fields: {missing}'), 422
+    try:
+        _validate_sensor_payload(node)
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 422
 
     with _lock:
         _update_cluster_cache(node)
@@ -87,7 +120,7 @@ def receive_sensor_data():
 def status():
     stats = query_status()
     return jsonify(
-        server          = 'WSN Hybrid Fault Detection Server',
+        server          = 'Smart Hybrid Fault Node Detection Server',
         version         = '2.0',
         timestamp       = datetime.now().isoformat(),
         ml_model_loaded = get_detector().is_ml_ready(),
@@ -98,8 +131,13 @@ def status():
 
 @app.route('/detections', methods=['GET'])
 def detections():
-    limit      = max(1, min(500, int(request.args.get('limit',  100))))
-    offset     = max(0,          int(request.args.get('offset',   0)))
+    try:
+        limit = _parse_int(request.args.get('limit', 100), 'limit')
+        offset = _parse_int(request.args.get('offset', 0), 'offset')
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    limit = max(1, min(500, limit))
+    offset = max(0, offset)
     fault_only = request.args.get('fault_only', 'false').lower() == 'true'
     rows, total = query_detections(limit, offset, fault_only)
     return jsonify(total=total, limit=limit, offset=offset, data=rows)
@@ -107,7 +145,11 @@ def detections():
 
 @app.route('/detections/<int:node_id>', methods=['GET'])
 def node_detections(node_id):
-    limit = max(1, min(200, int(request.args.get('limit', 50))))
+    try:
+        limit = _parse_int(request.args.get('limit', 50), 'limit')
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    limit = max(1, min(200, limit))
     return jsonify(node_id=node_id, history=query_node_history(node_id, limit))
 
 
@@ -137,7 +179,7 @@ def reset():
     return jsonify(status='reset complete', timestamp=datetime.now().isoformat())
 
 
-# ── CORS headers (allow dashboard to call the API) ─────────────────────────
+# -- CORS headers (allow dashboard to call the API) -------------------------
 @app.after_request
 def add_cors(response):
     response.headers['Access-Control-Allow-Origin']  = '*'
@@ -148,8 +190,8 @@ def add_cors(response):
 
 if __name__ == '__main__':
     print("=" * 54)
-    print("  WSN Enhanced Fault Detection Server  v2.0")
+    print("  Smart Hybrid Fault Node Detection Server  v2.0")
     print(f"  http://127.0.0.1:5000")
-    print(f"  Dashboard → http://127.0.0.1:5000/")
+    print(f"  Dashboard -> http://127.0.0.1:5000/")
     print("=" * 54)
     app.run(host=SERVER['host'], port=SERVER['port'], debug=SERVER['debug'])

@@ -34,7 +34,7 @@ def engineer_features(df: pd.DataFrame) -> pd.DataFrame:
 
 def train():
     print("=" * 62)
-    print("  WSN ML Fault Classifier — Training Pipeline")
+    print("  WSN ML Fault Classifier - Training Pipeline")
     print("=" * 62)
 
     #Load dataset
@@ -47,12 +47,12 @@ def train():
     le    = LabelEncoder()
     y_enc = le.fit_transform(y)
 
-    print(f"\nDataset : {X.shape[0]} rows × {X.shape[1]} features")
+    print(f"\nDataset : {X.shape[0]} rows x {X.shape[1]} features")
     print(f"Classes : {list(le.classes_)}")
     print(f"\nClass distribution:")
     for cls, cnt in zip(le.classes_, np.bincount(y_enc)):
         pct = cnt / len(y_enc) * 100
-        bar = '█' * int(pct / 2)
+        bar = '#' * int(pct / 2)
         print(f"  {cls:15s}: {cnt:5d}  ({pct:5.1f}%)  {bar}")
 
     #test-train Split
@@ -90,7 +90,7 @@ def train():
     cv      = StratifiedKFold(n_splits=ML['cv_folds'], shuffle=True,
                                random_state=ML['random_state'])
     cv_scores = cross_val_score(model, X_train_s, y_train, cv=cv, scoring='accuracy')
-    print(f"{ML['cv_folds']}-Fold CV : {cv_scores.mean()*100:.2f}% ± {cv_scores.std()*100:.2f}%")
+    print(f"{ML['cv_folds']}-Fold CV : {cv_scores.mean()*100:.2f}% +/- {cv_scores.std()*100:.2f}%")
 
     # Rule-based baseline
     rb_acc = accuracy_score(df['actual_fault_occurred'], df['is_fault_predicted'])
@@ -101,7 +101,7 @@ def train():
     importances = pd.Series(model.feature_importances_, index=FEATURE_COLS)
     print("\nTop 5 Features:")
     for feat, imp in importances.nlargest(5).items():
-        bar = '█' * int(imp * 60)
+        bar = '#' * int(imp * 60)
         print(f"  {feat:30s} {bar} {imp:.4f}")
 
     # Save artifacts
@@ -138,10 +138,10 @@ def train():
     with open(PATHS['metrics'], 'w') as fh:
         json.dump(metrics, fh, indent=2)
 
-    print(f"\n✅ Model   saved → {PATHS['model']}")
-    print(f"✅ Encoder saved → {PATHS['encoder']}")
-    print(f"✅ Scaler  saved → {PATHS['scaler']}")
-    print(f"✅ Metrics saved → {PATHS['metrics']}")
+    print(f"\n[OK] Model   saved -> {PATHS['model']}")
+    print(f"[OK] Encoder saved -> {PATHS['encoder']}")
+    print(f"[OK] Scaler  saved -> {PATHS['scaler']}")
+    print(f"[OK] Metrics saved -> {PATHS['metrics']}")
     return metrics
 
 

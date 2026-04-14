@@ -10,6 +10,12 @@ from datetime import datetime
 
 from config import PATHS, THRESHOLDS, DETECTION_WEIGHTS, FEATURE_COLS
 
+def _safe_float(node: dict, key: str, default: float) -> float:
+    try:
+        return float(node.get(key, default))
+    except (TypeError, ValueError):
+        return float(default)
+
 
 def _engineer_node_features(node: dict) -> pd.DataFrame:
 
@@ -40,12 +46,12 @@ class HybridFaultDetector:
             self.model   = joblib.load(PATHS['model'])
             self.encoder = joblib.load(PATHS['encoder'])
             self.scaler  = joblib.load(PATHS['scaler'])
-            print("[HybridDetector] ✅ ML model loaded successfully.")
+            print("[HybridDetector] [OK] ML model loaded successfully.")
         except FileNotFoundError:
-            print("[HybridDetector] ⚠️  Model files not found."
+            print("[HybridDetector] [WARN]  Model files not found."
                   " Run: python -m detection_system.ml_trainer")
         except Exception as exc:
-            print(f"[HybridDetector] ⚠️  Model load error: {exc}")
+            print(f"[HybridDetector] [WARN]  Model load error: {exc}")
 
     def is_ml_ready(self) -> bool:
         return self.model is not None
@@ -53,12 +59,12 @@ class HybridFaultDetector:
     
     def _layer1_rules(self, node: dict) -> dict:
         r = dict(fault=False, fault_type='none', confidence=0.0, reason='')
-        bat  = node.get('battery_level',  100.0)
-        sig  = node.get('signal_strength', -50.0)
-        pdr  = node.get('pdr',              1.0)
-        lat  = node.get('latency_ms',       50.0)
-        temp = node.get('temperature',      25.0)
-        hum  = node.get('humidity',         50.0)
+        bat  = _safe_float(node, 'battery_level', 100.0)
+        sig  = _safe_float(node, 'signal_strength', -50.0)
+        pdr  = _safe_float(node, 'pdr', 1.0)
+        lat  = _safe_float(node, 'latency_ms', 50.0)
+        temp = _safe_float(node, 'temperature', 25.0)
+        hum  = _safe_float(node, 'humidity', 50.0)
 
         if bat < THRESHOLDS['battery_critical']:
             r.update(fault=True, fault_type='battery_low', confidence=0.92,
@@ -75,7 +81,7 @@ class HybridFaultDetector:
 
         if not (THRESHOLDS['temp_min'] <= temp <= THRESHOLDS['temp_max']):
             r.update(fault=True, fault_type='sensor_fail', confidence=0.87,
-                     reason=f"Temperature {temp:.1f}°C out of range "
+                     reason=f"Temperature {temp:.1f} C out of range "
                              f"[{THRESHOLDS['temp_min']}, {THRESHOLDS['temp_max']}]")
         elif not (THRESHOLDS['humidity_min'] <= hum <= THRESHOLDS['humidity_max']):
             r.update(fault=True, fault_type='sensor_fail', confidence=0.83,
@@ -101,11 +107,14 @@ class HybridFaultDetector:
             mu, sigma = vals.mean(), vals.std()
             if sigma < 1e-6:
                 continue
-            z = abs((float(node[col]) - mu) / sigma)
+            try:
+                z = abs((float(node[col]) - mu) / sigma)
+            except (TypeError, ValueError):
+                continue
             if z > THRESHOLDS['z_score_threshold']:
                 conf = min(0.95, 0.60 + 0.10 * z)
                 r.update(fault=True, fault_type=ftype, confidence=float(round(conf, 4)),
-                         reason=f"Z-score {z:.2f} on {col} (μ={mu:.2f}, σ={sigma:.2f})")
+                         reason=f"Z-score {z:.2f} on {col} (mu={mu:.2f}, sigma={sigma:.2f})")
                 break
         return r
 
@@ -147,10 +156,12 @@ class HybridFaultDetector:
 
         W  = DETECTION_WEIGHTS
         votes = {}
+        supporters = {}
         for res, w in [(l1, W['layer1']), (l2, W['layer2']), (l3, W['layer3'])]:
             if res['fault']:
                 ft = res['fault_type']
                 votes[ft] = votes.get(ft, 0.0) + w * res['confidence']
+                supporters[ft] = supporters.get(ft, 0) + 1
 
         final_type  = 'none'
         final_conf  = 0.0
@@ -158,7 +169,20 @@ class HybridFaultDetector:
         if votes:
             final_type  = max(votes, key=votes.get)
             final_conf  = float(round(votes[final_type], 4))
-            final_fault = bool(final_conf >= THRESHOLDS['combined_threshold'])
+            support_count = supporters.get(final_type, 0)
+            # Detect when weighted confidence passes threshold OR
+            # at least two layers agree on the same non-none fault type.
+            final_fault = bool(
+                (final_conf >= THRESHOLDS['combined_threshold']) or
+                (final_type != 'none' and support_count >= 2)
+            )
+
+        # Safety override: if deterministic rules detect a strong fault,
+        # do not suppress it due to weighted-vote dilution.
+        if (not final_fault) and l1['fault'] and l1['confidence'] >= 0.80:
+            final_fault = True
+            final_type = l1['fault_type']
+            final_conf = float(round(max(final_conf, l1['confidence']), 4))
 
         return {
             'node_id':        node.get('node_id'),
