@@ -45,7 +45,7 @@ THRESHOLDS = {
     # Layer 2 — Cluster Statistical
     'z_score_threshold':    2.5,   # z-score → cluster anomaly
     # Layer 3 — ML
-    'ml_confidence_min':    0.55,  # min ML probability to trust
+    'ml_confidence_min':    0.45,  # min ML probability to trust
     # Combined decision
     'combined_threshold':   0.30,  # weighted vote threshold
 }

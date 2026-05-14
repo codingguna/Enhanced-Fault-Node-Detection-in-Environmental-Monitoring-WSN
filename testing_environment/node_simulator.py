@@ -65,14 +65,17 @@ def inject_fault(reading: dict, fault_type: str) -> dict:
     if fault_type == 'battery_low':
         r['battery_level']        = round(_rng.uniform(2.0, 14.0), 2)
         r['energy_consumed_mJ']   = round(_rng.uniform(1.80, 2.00), 3)
+        r['recovery_time_ms']     = round(_rng.uniform(50.0, 500.0), 1)
 
     elif fault_type == 'link_loss':
         r['signal_strength']      = round(_rng.uniform(-99.0, -95.0), 2)
         r['pdr']                  = round(_rng.uniform(0.750, 0.810), 3)
         r['latency_ms']           = round(_rng.uniform(290.0, 420.0), 2)
         r['transmission_success'] = 0
+        r['recovery_time_ms']     = round(_rng.uniform(50.0, 500.0), 1)
 
     elif fault_type == 'sensor_fail':
+        r['recovery_time_ms']     = round(_rng.uniform(50.0, 500.0), 1)
         if _rng.random() < 0.5:
             r['temperature'] = round(
                 _rng.choice([_rng.uniform(-15, 3), _rng.uniform(58, 85)]), 2
