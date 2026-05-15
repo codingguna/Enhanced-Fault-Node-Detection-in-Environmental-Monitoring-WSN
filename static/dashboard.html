@@ -1,0 +1,946 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Smart Hybrid Fault Node Detection — Command Center</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Oxanium:wght@300;400;600;800&family=Rajdhani:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{
+  --bg:#050a0f; --panel:#0b1520; --panel2:#0f1e2e; --border:#1a3a5c;
+  --accent:#00d4ff; --green:#00ff88; --warn:#ffaa00; --danger:#ff3355;
+  --orange:#ff6633; --purple:#c77dff;
+  --text:#c8e0f0; --muted:#4a6a8a;
+  --glow:0 0 20px rgba(0,212,255,.25);
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+html{scroll-behavior:smooth}
+body{font-family:'Rajdhani',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,.07) 2px,rgba(0,0,0,.07) 4px);pointer-events:none;z-index:9999}
+body::after{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(0,212,255,.025) 1px,transparent 1px),linear-gradient(90deg,rgba(0,212,255,.025) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+
+/* ── Header ── */
+header{position:relative;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:12px 28px;border-bottom:1px solid var(--border);background:linear-gradient(90deg,rgba(0,212,255,.07) 0%,transparent 55%)}
+.logo{display:flex;align-items:center;gap:14px}
+.logo-box{width:40px;height:40px;border:2px solid var(--accent);border-radius:8px;display:flex;align-items:center;justify-content:center;font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--accent);box-shadow:var(--glow);animation:pulseBorder 3s ease-in-out infinite}
+@keyframes pulseBorder{0%,100%{box-shadow:var(--glow)}50%{box-shadow:0 0 32px rgba(0,212,255,.55)}}
+.logo h1{font-family:'Oxanium',sans-serif;font-size:17px;font-weight:800;color:#fff;letter-spacing:2px;text-transform:uppercase}
+.logo p{font-size:10px;color:var(--muted);letter-spacing:3px;text-transform:uppercase;font-family:'Share Tech Mono',monospace}
+.hd-right{display:flex;align-items:center;gap:20px}
+.live-badge{display:flex;align-items:center;gap:7px;font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;color:var(--green)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:blink 1s step-end infinite;box-shadow:0 0 7px var(--green)}
+@keyframes blink{50%{opacity:0}}
+#clock{font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--accent)}
+#conn-status{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;padding:3px 10px;border-radius:4px;border:1px solid;transition:all .3s}
+#conn-status.live{color:var(--green);border-color:rgba(0,255,136,.3);background:rgba(0,255,136,.08)}
+#conn-status.demo{color:var(--warn);border-color:rgba(255,170,0,.3);background:rgba(255,170,0,.08)}
+
+/* ── Nav ── */
+nav{position:relative;z-index:10;display:flex;padding:0 28px;border-bottom:1px solid var(--border);background:var(--panel)}
+nav button{background:none;border:none;border-bottom:2px solid transparent;padding:11px 20px;color:var(--muted);font-family:'Rajdhani',sans-serif;font-size:12px;font-weight:600;letter-spacing:1.5px;text-transform:uppercase;cursor:pointer;transition:all .2s}
+nav button:hover{color:var(--text)}
+nav button.active{color:var(--accent);border-bottom-color:var(--accent)}
+
+/* ── Main ── */
+main{position:relative;z-index:10;padding:18px 28px}
+.tab{display:none}.tab.active{display:block}
+
+/* ── KPI row ── */
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:18px}
+.kpi{background:var(--panel);border:1px solid var(--border);border-radius:10px;padding:14px 16px;position:relative;overflow:hidden}
+.kpi::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:var(--accent)}
+.kpi.red::before{background:var(--danger)}.kpi.warn::before{background:var(--warn)}.kpi.green::before{background:var(--green)}.kpi.purple::before{background:var(--purple)}
+.kpi-lbl{font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);font-family:'Share Tech Mono',monospace;margin-bottom:6px}
+.kpi-val{font-family:'Oxanium',sans-serif;font-size:26px;font-weight:800;color:#fff;line-height:1;margin-bottom:3px}
+.kpi-sub{font-size:10px;color:var(--muted);font-family:'Share Tech Mono',monospace}
+
+/* ── Panel ── */
+.row{display:grid;gap:14px;margin-bottom:14px}
+.r-2{grid-template-columns:1fr 1fr}.r-3{grid-template-columns:2fr 1fr 1fr}.r-32{grid-template-columns:3fr 2fr}.r-23{grid-template-columns:2fr 3fr}
+.panel{background:var(--panel);border:1px solid var(--border);border-radius:12px;overflow:hidden}
+.ph{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;border-bottom:1px solid var(--border);background:var(--panel2)}
+.ph-title{font-size:10px;letter-spacing:2px;text-transform:uppercase;color:var(--accent);font-family:'Share Tech Mono',monospace}
+.ph-badge{font-family:'Share Tech Mono',monospace;font-size:9px;padding:2px 7px;border-radius:3px;background:rgba(0,212,255,.1);color:var(--accent);border:1px solid rgba(0,212,255,.2)}
+.pb{padding:14px 16px}
+
+/* ── Fault badges ── */
+.fb{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:20px;font-size:10px;font-weight:600;font-family:'Share Tech Mono',monospace}
+.fb.battery_low{background:rgba(255,51,85,.14);color:var(--danger);border:1px solid rgba(255,51,85,.3)}
+.fb.link_loss{background:rgba(255,170,0,.14);color:var(--warn);border:1px solid rgba(255,170,0,.3)}
+.fb.sensor_fail{background:rgba(255,102,51,.14);color:var(--orange);border:1px solid rgba(255,102,51,.3)}
+.fb.none{background:rgba(0,255,136,.1);color:var(--green);border:1px solid rgba(0,255,136,.2)}
+
+/* ── Confidence bar ── */
+.conf-wrap{display:flex;align-items:center;gap:7px}
+.conf-bg{flex:1;height:4px;background:rgba(255,255,255,.07);border-radius:2px}
+.conf-fill{height:100%;border-radius:2px;transition:width .4s}
+.conf-num{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--muted);width:30px}
+
+/* ── Table ── */
+.tbl{width:100%;border-collapse:collapse;font-size:12px}
+.tbl th{text-align:left;padding:7px 9px;font-size:9px;letter-spacing:2px;text-transform:uppercase;color:var(--muted);border-bottom:1px solid var(--border);font-family:'Share Tech Mono',monospace;white-space:nowrap}
+.tbl td{padding:8px 9px;border-bottom:1px solid rgba(26,58,92,.4);vertical-align:middle}
+.tbl tr:hover td{background:rgba(0,212,255,.04)}
+.tbl-wrap{max-height:400px;overflow-y:auto;overflow-x:auto}
+
+/* ── Alert log ── */
+#alertLog{height:250px;overflow-y:auto;font-family:'Share Tech Mono',monospace;font-size:11px}
+.log-entry{display:flex;gap:8px;padding:5px 0;border-bottom:1px solid rgba(26,58,92,.3);animation:fadeIn .3s ease}
+@keyframes fadeIn{from{opacity:0;transform:translateX(-8px)}to{opacity:1;transform:translateX(0)}}
+.log-ts{color:var(--muted);flex-shrink:0}
+.log-fault{color:var(--danger)}.log-ok{color:var(--green)}.log-warn{color:var(--warn)}
+
+/* ── Charts ── */
+.ch{position:relative;height:200px}.ch-lg{position:relative;height:270px}.ch-xl{position:relative;height:320px}
+
+/* ── Network canvas ── */
+#netCanvas{width:100%;border-radius:6px;display:block}
+
+/* ── Metrics ── */
+.metric-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:18px}
+.metric-card{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:12px;text-align:center}
+.metric-card .val{font-family:'Oxanium',sans-serif;font-size:20px;font-weight:700;color:var(--green);margin-bottom:3px}
+.metric-card .lbl{font-size:9px;letter-spacing:1.5px;text-transform:uppercase;color:var(--muted);font-family:'Share Tech Mono',monospace}
+.cls-row{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.cls-name{font-family:'Share Tech Mono',monospace;font-size:11px;width:90px;color:var(--text)}
+.cls-bars{flex:1;display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px}
+.bar-item{display:flex;flex-direction:column;gap:2px}
+.bar-lbl{font-size:8px;letter-spacing:1px;text-transform:uppercase;color:var(--muted);font-family:'Share Tech Mono',monospace}
+.bar-track{height:5px;background:rgba(255,255,255,.07);border-radius:3px}
+.bar-fill{height:100%;border-radius:3px;background:var(--accent)}
+.bar-num{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--text)}
+
+/* ── Filter row ── */
+.filters{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
+.fbtn{padding:5px 12px;border-radius:20px;border:1px solid var(--border);background:var(--panel2);color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:10px;cursor:pointer;transition:all .2s}
+.fbtn:hover,.fbtn.active{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08)}
+
+/* ── Test Lab ── */
+.test-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.test-field{display:flex;flex-direction:column;gap:5px}
+.test-label{font-family:'Share Tech Mono',monospace;font-size:10px;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+.test-input{height:34px;border:1px solid var(--border);background:var(--panel2);color:var(--text);border-radius:8px;padding:0 10px;font-family:'Share Tech Mono',monospace;font-size:12px;outline:none}
+.test-input:focus{border-color:var(--accent);box-shadow:0 0 0 2px rgba(0,212,255,.12)}
+.test-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+.test-btn{padding:8px 12px;border-radius:8px;border:1px solid var(--border);background:var(--panel2);color:var(--text);font-family:'Share Tech Mono',monospace;font-size:11px;cursor:pointer;transition:all .2s}
+.test-btn:hover{border-color:var(--accent);color:var(--accent);background:rgba(0,212,255,.08)}
+.test-btn.primary{background:rgba(0,212,255,.12);border-color:rgba(0,212,255,.45);color:var(--accent)}
+.test-help{margin-top:10px;font-size:11px;color:var(--muted);font-family:'Share Tech Mono',monospace;line-height:1.5}
+.test-result-wrap{background:#07111b;border:1px solid var(--border);border-radius:10px;padding:12px;max-height:300px;overflow:auto}
+#test-result{white-space:pre-wrap;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--text);line-height:1.5}
+.test-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-bottom:10px}
+.test-stat{background:var(--panel2);border:1px solid var(--border);border-radius:8px;padding:8px}
+.test-stat .k{font-family:'Share Tech Mono',monospace;font-size:9px;letter-spacing:1px;color:var(--muted);text-transform:uppercase}
+.test-stat .v{font-family:'Oxanium',sans-serif;font-size:16px;color:#fff;margin-top:4px}
+
+/* ── Node status list ── */
+.node-item{display:flex;justify-content:space-between;align-items:center;padding:7px 0;border-bottom:1px solid rgba(26,58,92,.35)}
+.node-id{font-family:'Share Tech Mono',monospace;font-size:12px;color:#fff}
+.node-sub{font-size:10px;color:var(--muted);font-family:'Share Tech Mono',monospace}
+
+/* ── Scrollbars ── */
+::-webkit-scrollbar{width:5px;height:5px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* ── Empty state ── */
+.empty{text-align:center;padding:30px;color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:11px}
+
+/* ── Spinner ── */
+.spin{display:inline-block;width:12px;height:12px;border:2px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+/* ── Offline Overlay ── */
+#offline-alert {
+  position: fixed;
+  top: 0; left: 0; right: 0; bottom: 0;
+  background: rgba(5, 10, 15, 0.85);
+  backdrop-filter: blur(8px);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 20px;
+  visibility: hidden;
+  opacity: 0;
+  transition: all 0.4s ease;
+}
+#offline-alert.visible {
+  visibility: visible;
+  opacity: 1;
+}
+.alert-card {
+  background: var(--panel);
+  border: 1px solid var(--danger);
+  padding: 40px;
+  border-radius: 16px;
+  text-align: center;
+  box-shadow: 0 0 50px rgba(255, 51, 85, 0.2);
+  max-width: 450px;
+}
+.alert-card h2 {
+  font-family: 'Oxanium', sans-serif;
+  color: var(--danger);
+  margin-bottom: 12px;
+  letter-spacing: 2px;
+}
+.alert-card p {
+  color: var(--text);
+  font-size: 14px;
+  margin-bottom: 24px;
+}
+.cmd-box {
+  background: #000;
+  padding: 12px 18px;
+  border-radius: 6px;
+  font-family: 'Share Tech Mono', monospace;
+  color: var(--green);
+  font-size: 14px;
+  border: 1px solid var(--border);
+}
+</style>
+</head>
+<body>
+
+<div id="offline-alert">
+  <div class="alert-card">
+    <h2>SYSTEM OFFLINE</h2>
+    <p>The dashboard is not connected to the backend server.</p>
+    <div class="cmd-box">python run.py server</div>
+    <p style="font-size: 11px; color: var(--muted); margin-top: 20px;">
+      Run the command above to start monitoring live WSN data.
+    </p>
+  </div>
+</div>
+
+<header>
+  <div class="logo">
+    <div class="logo-box">WSN</div>
+    <div>
+      <h1>Fault Detection Command Center</h1>
+      <p>Environmental Monitoring · Hybrid Detection System v2.0</p>
+    </div>
+  </div>
+  <div class="hd-right">
+    <span id="conn-status" class="demo">⬤ DEMO MODE</span>
+    <div class="live-badge"><div class="dot"></div>LIVE</div>
+    <div id="clock">--:--:--</div>
+  </div>
+</header>
+
+<nav>
+  <button class="active" onclick="goTab('overview',this)">Overview</button>
+  <button onclick="goTab('faults',this)">Fault Log</button>
+  <button onclick="goTab('analysis',this)">Analysis</button>
+  <button onclick="goTab('test',this)">Test Lab</button>
+</nav>
+
+<main>
+
+<!-- ═══ OVERVIEW ═══════════════════════════════════════════════════════════ -->
+<div class="tab active" id="tab-overview">
+
+  <div class="kpi-row">
+    <div class="kpi"><div class="kpi-lbl">Total Readings</div><div class="kpi-val" id="k-readings">—</div><div class="kpi-sub">sensor data points</div></div>
+    <div class="kpi red"><div class="kpi-lbl">Faults Detected</div><div class="kpi-val" id="k-faults">—</div><div class="kpi-sub" id="k-faultrate">—</div></div>
+    <div class="kpi warn"><div class="kpi-lbl">Active Clusters</div><div class="kpi-val" id="k-clusters">—</div><div class="kpi-sub">monitoring groups</div></div>
+    <div class="kpi purple"><div class="kpi-lbl">Last Reading</div><div class="kpi-val" style="font-size:15px" id="k-last">—</div><div class="kpi-sub">timestamp</div></div>
+  </div>
+
+  <div class="row r-32">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Fault Detection Timeline</span><span class="ph-badge" id="tl-badge">0 events</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="timelineChart"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Fault Type Distribution</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="donutChart"></canvas></div></div>
+    </div>
+  </div>
+
+  <div class="row r-2">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Live Alert Log</span><div class="spin" id="log-spin"></div></div>
+      <div class="pb" style="padding:8px 12px"><div id="alertLog"><div class="empty">Waiting for data…<br><br>Start server.py then sensor_client.py<br>or view demo data above</div></div></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Battery Levels — Latest per Node</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="batteryChart"></canvas></div></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- ═══ FAULT LOG ══════════════════════════════════════════════════════════ -->
+<div class="tab" id="tab-faults">
+  <div class="filters">
+    <button class="fbtn active" onclick="setFilter('all',this)">All</button>
+    <button class="fbtn" onclick="setFilter('fault',this)">Faults Only</button>
+    <button class="fbtn" onclick="setFilter('battery_low',this)">Battery Low</button>
+    <button class="fbtn" onclick="setFilter('link_loss',this)">Link Loss</button>
+    <button class="fbtn" onclick="setFilter('sensor_fail',this)">Sensor Fail</button>
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="ph-title">Detection Records</span><span class="ph-badge" id="flt-badge">0 records</span></div>
+    <div class="tbl-wrap">
+      <table class="tbl">
+        <thead><tr>
+          <th>Node</th><th>Cluster</th><th>Time</th><th>Fault Type</th>
+          <th>Confidence</th><th>Layers</th><th>Battery</th><th>Signal</th>
+          <th>Temp</th><th>Latency</th><th>PDR</th>
+        </tr></thead>
+        <tbody id="flt-body"><tr><td colspan="11" class="empty">No records yet</td></tr></tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ ANALYSIS ══════════════════════════════════════════════════════════ -->
+<div class="tab" id="tab-analysis">
+  <div class="row r-2">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Fault Rate per Cluster</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="clusterChart"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Detection Layer Contribution</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="layerChart"></canvas></div></div>
+    </div>
+  </div>
+  <div class="row r-2">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Latency Distribution (ms)</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="latencyChart"></canvas></div></div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">PDR Trend (last 40 readings)</span></div>
+      <div class="pb"><div class="ch-lg"><canvas id="pdrChart"></canvas></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ TEST LAB ══════════════════════════════════════════════════════════ -->
+<div class="tab" id="tab-test">
+  <div class="row r-2">
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Manual Sensor Input</span><span class="ph-badge">Validation Test</span></div>
+      <div class="pb">
+        <div class="test-grid">
+          <div class="test-field"><label class="test-label" for="t-node">Node ID</label><input class="test-input" id="t-node" type="number" min="1" max="50" value="1"></div>
+          <div class="test-field"><label class="test-label" for="t-cluster">Cluster ID</label><input class="test-input" id="t-cluster" type="number" min="1" max="5" value="1"></div>
+          <div class="test-field"><label class="test-label" for="t-battery">Battery Level (%)</label><input class="test-input" id="t-battery" type="number" step="0.01" value="80"></div>
+          <div class="test-field"><label class="test-label" for="t-signal">Signal Strength (dBm)</label><input class="test-input" id="t-signal" type="number" step="0.01" value="-60"></div>
+          <div class="test-field"><label class="test-label" for="t-temp">Temperature (C)</label><input class="test-input" id="t-temp" type="number" step="0.01" value="25"></div>
+          <div class="test-field"><label class="test-label" for="t-humidity">Humidity (%)</label><input class="test-input" id="t-humidity" type="number" step="0.01" value="50"></div>
+          <div class="test-field"><label class="test-label" for="t-latency">Latency (ms)</label><input class="test-input" id="t-latency" type="number" step="0.01" value="100"></div>
+          <div class="test-field"><label class="test-label" for="t-pdr">Packet Delivery Ratio</label><input class="test-input" id="t-pdr" type="number" step="0.001" min="0" max="1" value="0.95"></div>
+        </div>
+        <div class="test-actions">
+          <button class="test-btn primary" onclick="sendCustomReading()">Send Custom Reading</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel">
+      <div class="ph"><span class="ph-title">Fault Types (Defined)</span><span class="ph-badge">3 Fault Classes</span></div>
+      <div class="pb">
+        <div class="filters">
+          <button class="fbtn" onclick="fillTestByType('none')">none (normal)</button>
+          <button class="fbtn" onclick="fillTestByType('battery_low')">battery_low</button>
+          <button class="fbtn" onclick="fillTestByType('link_loss')">link_loss</button>
+          <button class="fbtn" onclick="fillTestByType('sensor_fail')">sensor_fail</button>
+        </div>
+        <div class="test-actions">
+          <button class="test-btn" onclick="sendNormalReading()">Send Random Normal Reading</button>
+          <button class="test-btn" onclick="sendFaultReading()">Send Random Fault Reading</button>
+        </div>
+        <div class="test-help">
+          Normal reading uses healthy value ranges. Fault reading injects one random fault pattern.
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <div class="ph"><span class="ph-title">Last Test Result</span><span class="ph-badge">JSON Response</span></div>
+    <div class="pb">
+      <div class="test-summary">
+        <div class="test-stat"><div class="k">HTTP Status</div><div class="v" id="t-http">—</div></div>
+        <div class="test-stat"><div class="k">Fault Detected</div><div class="v" id="t-detected">—</div></div>
+        <div class="test-stat"><div class="k">Fault Type</div><div class="v" id="t-type">—</div></div>
+        <div class="test-stat"><div class="k">Confidence</div><div class="v" id="t-conf">—</div></div>
+      </div>
+      <div class="test-result-wrap"><pre id="test-result">No test sent yet.</pre></div>
+    </div>
+  </div>
+</div>
+
+</main>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  CONSTANTS
+// ════════════════════════════════════════════════════════
+const API      = (window.location.protocol === 'http:' || window.location.protocol === 'https:')
+  ? window.location.origin
+  : 'http://127.0.0.1:5000';
+const POLL_MS  = 3000;
+const MAX_LOG  = 60;
+const TL_BINS  = 30;
+const CLUSTER_COLORS = ['#00d4ff','#00ff88','#ffaa00','#ff6633','#c77dff'];
+const FAULT_CSS = { battery_low:'danger', link_loss:'warn', sensor_fail:'orange', none:'green' };
+
+// Fixed topology positions for 50 nodes
+const NODE_POS = {};
+for (let i = 1; i <= 50; i++) {
+  const c  = (i - 1) % 5;
+  const ring = Math.floor((i - 1) / 5);
+  const angle = (c / 5) * 2 * Math.PI + ring * 0.5;
+  const r     = 0.18 + ring * 0.065;
+  NODE_POS[i] = { x: 0.5 + r * Math.cos(angle), y: 0.5 + r * Math.sin(angle), cluster: c + 1 };
+}
+
+// ════════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════════
+let detections   = [];
+let lastId       = 0;
+let currentFilter= 'all';
+let charts       = {};
+let isLive       = false;
+let analysisBuilt= false;
+let pollTimer    = null;
+let reconnectTimer = null;
+
+function fetchWithTimeout(url, timeoutMs = 2500, options = {}) {
+  if (typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function') {
+    return fetch(url, { ...options, signal: AbortSignal.timeout(timeoutMs) });
+  }
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+  return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(id));
+}
+
+// ════════════════════════════════════════════════════════
+//  CLOCK
+// ════════════════════════════════════════════════════════
+function tick(){ document.getElementById('clock').textContent = new Date().toLocaleTimeString('en-US',{hour12:false}); }
+setInterval(tick,1000); tick();
+
+// ════════════════════════════════════════════════════════
+//  TAB NAVIGATION
+// ════════════════════════════════════════════════════════
+function goTab(id, btn) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('nav button').forEach(b => b.classList.remove('active'));
+  document.getElementById('tab-' + id).classList.add('active');
+  btn.classList.add('active');
+  if (id === 'analysis') buildAnalysis();
+}
+
+// ════════════════════════════════════════════════════════
+//  CHART HELPERS
+// ════════════════════════════════════════════════════════
+Chart.defaults.color         = '#4a6a8a';
+Chart.defaults.borderColor   = '#1a3a5c';
+Chart.defaults.font.family   = "'Share Tech Mono', monospace";
+Chart.defaults.font.size     = 9;
+
+const scaleDefaults = () => ({
+  x: { grid:{ color:'#0d2035' }, ticks:{ color:'#4a6a8a' } },
+  y: { grid:{ color:'#0d2035' }, ticks:{ color:'#4a6a8a' } }
+});
+
+// ════════════════════════════════════════════════════════
+//  INIT OVERVIEW CHARTS
+// ════════════════════════════════════════════════════════
+function initCharts() {
+  // Timeline
+  charts.tl = new Chart(document.getElementById('timelineChart'), {
+    type: 'line',
+    data: { labels:[], datasets:[
+      { label:'Faults', data:[], borderColor:'#ff3355', backgroundColor:'rgba(255,51,85,.12)',
+        fill:true, tension:.4, pointRadius:3, borderWidth:2 },
+      { label:'Normal', data:[], borderColor:'#00d4ff', backgroundColor:'rgba(0,212,255,.06)',
+        fill:true, tension:.4, pointRadius:2, borderWidth:1.5 }
+    ]},
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{ display:true, labels:{ color:'#4a6a8a', boxWidth:10, font:{size:9} } } },
+      scales: scaleDefaults() }
+  });
+
+  // Donut
+  charts.donut = new Chart(document.getElementById('donutChart'), {
+    type: 'doughnut',
+    data: { labels:['Battery Low','Link Loss','Sensor Fail','Normal'],
+      datasets:[{ data:[0,0,0,0],
+        backgroundColor:['rgba(255,51,85,.8)','rgba(255,170,0,.8)','rgba(255,102,51,.8)','rgba(0,255,136,.7)'],
+        borderColor:['#ff3355','#ffaa00','#ff6633','#00ff88'],
+        borderWidth:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false, cutout:'63%',
+      plugins:{ legend:{ display:true, position:'bottom',
+        labels:{ color:'#c8e0f0', font:{size:9,family:"'Share Tech Mono'"}, padding:10, boxWidth:9 } } } }
+  });
+
+  // Battery
+  charts.battery = new Chart(document.getElementById('batteryChart'), {
+    type: 'bar',
+    data: { labels:[], datasets:[{ label:'Battery %', data:[],
+      backgroundColor: ctx => {
+        const v = ctx.parsed?.y ?? 100;
+        return v < 15 ? 'rgba(255,51,85,.75)' : v < 30 ? 'rgba(255,170,0,.75)' : 'rgba(0,212,255,.65)';
+      }, borderRadius:2 }] },
+    options:{ responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ grid:{display:false}, ticks:{color:'#4a6a8a', font:{size:8}, maxRotation:90} },
+        y:{ max:100, grid:{color:'#0d2035'}, ticks:{color:'#4a6a8a'} } } }
+  });
+}
+
+// ════════════════════════════════════════════════════════
+//  POLLING
+// ════════════════════════════════════════════════════════
+async function poll() {
+  try {
+    const [sRes, dRes] = await Promise.all([
+      fetchWithTimeout(API + '/status', 2500),
+      fetchWithTimeout(API + '/detections?limit=200', 2500)
+    ]);
+    if (!sRes.ok || !dRes.ok) throw new Error();
+
+    const s = await sRes.json();
+    const d = await dRes.json();
+
+    // Update KPIs
+    document.getElementById('k-readings').textContent  = s.total_readings?.toLocaleString() ?? '—';
+    document.getElementById('k-faults').textContent    = s.total_faults?.toLocaleString()   ?? '—';
+    document.getElementById('k-faultrate').textContent = `${(s.fault_rate*100).toFixed(1)}% rate`;
+    document.getElementById('k-clusters').textContent  = s.active_clusters ?? '—';
+    if (s.last_reading) {
+      document.getElementById('k-last').textContent =
+        new Date(s.last_reading).toLocaleTimeString('en-US',{hour12:false});
+    }
+
+    const rows = d.data ?? [];
+    const newRows = rows.filter(r => r.id > lastId);
+    if (rows.length) {
+      lastId = Math.max(lastId, ...rows.map(r => r.id));
+    }
+    detections = rows;
+    renderFaultTable();
+    renderTimeline();
+    renderDonut();
+    renderBattery();
+    if (newRows.length) renderAlertLog(newRows);
+    document.getElementById('tl-badge').textContent = `${rows.filter(r=>r.fault_detected).length} faults`;
+    if (document.getElementById('tab-analysis').classList.contains('active')) buildAnalysis(true);
+
+    setLive(true);
+  } catch {
+    setLive(false);
+  }
+}
+
+function startPolling() {
+  if (!pollTimer) {
+    pollTimer = setInterval(poll, POLL_MS);
+  }
+}
+
+function clearLiveViews() {
+  detections = [];
+  renderFaultTable();
+  renderTimeline();
+  renderDonut();
+  renderBattery();
+  document.getElementById('tl-badge').textContent = '0 faults';
+  document.getElementById('k-readings').textContent = '—';
+  document.getElementById('k-faults').textContent = '—';
+  document.getElementById('k-faultrate').textContent = '—';
+  document.getElementById('k-clusters').textContent = '—';
+  document.getElementById('k-last').textContent = '—';
+}
+
+function setLive(live) {
+  if (isLive === live) return;
+  isLive = live;
+  const el = document.getElementById('conn-status');
+  const overlay = document.getElementById('offline-alert');
+  if (live) {
+    el.className = 'live'; el.textContent = '⬤ LIVE';
+    document.getElementById('log-spin').style.display = 'inline-block';
+    overlay.classList.remove('visible');
+    if (reconnectTimer) {
+      clearInterval(reconnectTimer);
+      reconnectTimer = null;
+    }
+  } else {
+    el.className = 'demo'; el.textContent = '⬤ OFFLINE';
+    document.getElementById('log-spin').style.display = 'none';
+    overlay.classList.add('visible');
+  }
+}
+
+// ════════════════════════════════════════════════════════
+//  RENDER HELPERS
+// ════════════════════════════════════════════════════════
+function renderTimeline() {
+  const buckets = {};
+  detections.slice(-TL_BINS * 3).forEach(r => {
+    const t = r.timestamp?.slice(11,16) ?? '—';
+    if (!buckets[t]) buckets[t] = { f:0, n:0 };
+    r.fault_detected ? buckets[t].f++ : buckets[t].n++;
+  });
+  const lbls = Object.keys(buckets).slice(-TL_BINS);
+  charts.tl.data.labels                 = lbls;
+  charts.tl.data.datasets[0].data      = lbls.map(l => buckets[l].f);
+  charts.tl.data.datasets[1].data      = lbls.map(l => buckets[l].n);
+  charts.tl.update('none');
+}
+
+function renderDonut() {
+  const faults = detections.filter(r => r.fault_detected);
+  const c = { battery_low:0, link_loss:0, sensor_fail:0, none: detections.length - faults.length };
+  faults.forEach(r => { c[r.fault_type] = (c[r.fault_type]||0)+1; });
+  charts.donut.data.datasets[0].data = [c.battery_low, c.link_loss, c.sensor_fail, c.none];
+  charts.donut.update('none');
+}
+
+function renderBattery() {
+  const latest = {};
+  detections.forEach(r => { if (r.node_id) latest[r.node_id] = r.battery_level; });
+  const nodes = Object.keys(latest).map(Number).sort((a,b)=>a-b);
+  charts.battery.data.labels                = nodes.map(n => `N${n}`);
+  charts.battery.data.datasets[0].data     = nodes.map(n => latest[n]);
+  charts.battery.update('none');
+}
+
+function renderAlertLog(newRows) {
+  const log  = document.getElementById('alertLog');
+  const emp  = log.querySelector('.empty');
+  if (emp) log.innerHTML = '';
+  newRows.filter(r => r.fault_detected).forEach(r => {
+    const ts  = r.timestamp ? new Date(r.timestamp).toLocaleTimeString('en-US',{hour12:false}) : '—';
+    const div = document.createElement('div');
+    div.className = 'log-entry';
+    div.innerHTML = `<span class="log-ts">${ts}</span>`+
+      `<span class="log-fault">⚠ N${String(r.node_id).padStart(2,'0')} `+
+      `${r.fault_type?.toUpperCase()} conf:${(r.confidence*100).toFixed(0)}%</span>`;
+    log.insertBefore(div, log.firstChild);
+  });
+  while (log.children.length > MAX_LOG) log.removeChild(log.lastChild);
+}
+
+// ── Fault table ────────────────────────────────────────────────────────────
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.fbtn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  renderFaultTable();
+}
+
+function filteredRows() {
+  if (currentFilter === 'all')   return detections;
+  if (currentFilter === 'fault') return detections.filter(r=>r.fault_detected);
+  return detections.filter(r=>r.fault_type === currentFilter);
+}
+
+function renderFaultTable() {
+  const rows = filteredRows();
+  document.getElementById('flt-badge').textContent = `${rows.length} records`;
+  const tbody = document.getElementById('flt-body');
+  if (!rows.length) { tbody.innerHTML='<tr><td colspan="11" class="empty">No matching records</td></tr>'; return; }
+
+  tbody.innerHTML = rows.slice(0,300).map(r => {
+    const ft   = r.fault_type || 'none';
+    const ts   = r.timestamp ? new Date(r.timestamp).toLocaleTimeString('en-US',{hour12:false}) : '—';
+    const conf = r.confidence || 0;
+    const confColor = conf > .7 ? '#ff3355' : conf > .4 ? '#ffaa00' : '#00d4ff';
+    const L1 = r.layer1_fault ? `<span style="color:#00d4ff">R</span>` : `<span style="color:#1a3a5c">R</span>`;
+    const L2 = r.layer2_fault ? `<span style="color:#00ff88">C</span>` : `<span style="color:#1a3a5c">C</span>`;
+    const L3 = r.layer3_fault ? `<span style="color:#c77dff">ML</span>` : `<span style="color:#1a3a5c">ML</span>`;
+    const cc  = CLUSTER_COLORS[(r.cluster_id||1)-1];
+    return `<tr>
+      <td style="font-family:'Share Tech Mono';color:#fff">N${String(r.node_id).padStart(2,'0')}</td>
+      <td style="font-family:'Share Tech Mono';color:${cc}">C${r.cluster_id}</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px;color:var(--muted)">${ts}</td>
+      <td><span class="fb ${ft}">${ft==='none'?'✓ NORMAL':'⚠ '+ft.replace('_',' ').toUpperCase()}</span></td>
+      <td><div class="conf-wrap"><div class="conf-bg"><div class="conf-fill" style="width:${conf*100}%;background:${confColor}"></div></div><span class="conf-num">${(conf*100).toFixed(0)}%</span></div></td>
+      <td style="font-family:'Share Tech Mono';font-size:11px;letter-spacing:2px">${L1} ${L2} ${L3}</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px;color:${(r.battery_level||100)<20?'var(--danger)':'var(--text)'}">${r.battery_level?.toFixed(1)||'—'}%</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px;color:${(r.signal_strength||0)<-90?'var(--warn)':'var(--text)'}">${r.signal_strength?.toFixed(1)||'—'}</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px">${r.temperature?.toFixed(1)||'—'}°C</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px;color:${(r.latency_ms||0)>250?'var(--warn)':'var(--text)'}">${r.latency_ms?.toFixed(0)||'—'}ms</td>
+      <td style="font-family:'Share Tech Mono';font-size:10px">${r.pdr?.toFixed(3)||'—'}</td>
+    </tr>`;
+  }).join('');
+}
+
+// ── Test lab helpers ───────────────────────────────────────────────────────
+function buildPayload(overrides = {}) {
+  return {
+    node_id: Number(overrides.node_id ?? 1),
+    cluster_id: Number(overrides.cluster_id ?? 1),
+    battery_level: Number(overrides.battery_level ?? 80),
+    signal_strength: Number(overrides.signal_strength ?? -60),
+    temperature: Number(overrides.temperature ?? 25),
+    humidity: Number(overrides.humidity ?? 50),
+    data_redundancy_flag: 0,
+    data_packet_size: 256,
+    latency_ms: Number(overrides.latency_ms ?? 100),
+    energy_consumed_mJ: Number(overrides.energy_consumed_mJ ?? 0.5),
+    optimized_path_flag: 1,
+    load_on_node: Number(overrides.load_on_node ?? 0.6),
+    recovery_time_ms: 0.0,
+    pdr: Number(overrides.pdr ?? 0.95),
+    transmission_success: 1
+  };
+}
+
+function randomInt(min, max) { return Math.floor(Math.random() * (max - min + 1)) + min; }
+function randomFloat(min, max, d = 2) { return Number((Math.random() * (max - min) + min).toFixed(d)); }
+function setTestInputs(payload) {
+  document.getElementById('t-node').value = payload.node_id;
+  document.getElementById('t-cluster').value = payload.cluster_id;
+  document.getElementById('t-battery').value = payload.battery_level;
+  document.getElementById('t-signal').value = payload.signal_strength;
+  document.getElementById('t-temp').value = payload.temperature;
+  document.getElementById('t-humidity').value = payload.humidity;
+  document.getElementById('t-latency').value = payload.latency_ms;
+  document.getElementById('t-pdr').value = payload.pdr;
+}
+
+function fillTestByType(type) {
+  const base = {
+    node_id: randomInt(1, 50),
+    cluster_id: randomInt(1, 5),
+    battery_level: randomFloat(70, 95, 2),
+    signal_strength: randomFloat(-80, -45, 2),
+    temperature: randomFloat(22, 35, 2),
+    humidity: randomFloat(35, 75, 2),
+    latency_ms: randomFloat(40, 180, 2),
+    pdr: randomFloat(0.9, 0.99, 3)
+  };
+
+  if (type === 'battery_low') {
+    base.battery_level = randomFloat(2, 12, 2);
+  } else if (type === 'link_loss') {
+    base.signal_strength = randomFloat(-100, -95, 2);
+    base.latency_ms = randomFloat(290, 420, 2);
+    base.pdr = randomFloat(0.75, 0.81, 3);
+  } else if (type === 'sensor_fail') {
+    if (Math.random() > 0.5) base.temperature = randomFloat(60, 80, 2);
+    else base.humidity = randomFloat(97, 110, 2);
+  }
+
+  setTestInputs(base);
+}
+
+async function sendToServer(payload, label) {
+  const out = document.getElementById('test-result');
+  out.textContent = `Sending ${label} payload...`;
+  document.getElementById('t-http').textContent = '...';
+  document.getElementById('t-detected').textContent = '...';
+  document.getElementById('t-type').textContent = '...';
+  document.getElementById('t-conf').textContent = '...';
+  try {
+    const res = await fetchWithTimeout(API + '/sensor_data', 3000, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+    const data = await res.json();
+    const det = data?.detection || {};
+    document.getElementById('t-http').textContent = String(res.status);
+    document.getElementById('t-detected').textContent = det.fault_detected ? 'YES' : 'NO';
+    document.getElementById('t-type').textContent = det.fault_type || 'none';
+    document.getElementById('t-conf').textContent = det.confidence != null ? `${(det.confidence * 100).toFixed(1)}%` : '0.0%';
+    out.textContent = JSON.stringify({ request_type: label, payload, response: data }, null, 2);
+    poll();
+  } catch (err) {
+    document.getElementById('t-http').textContent = 'ERR';
+    document.getElementById('t-detected').textContent = '-';
+    document.getElementById('t-type').textContent = '-';
+    document.getElementById('t-conf').textContent = '-';
+    out.textContent = `Request failed: ${err}`;
+  }
+}
+
+async function sendCustomReading() {
+  const payload = buildPayload({
+    node_id: document.getElementById('t-node').value,
+    cluster_id: document.getElementById('t-cluster').value,
+    battery_level: document.getElementById('t-battery').value,
+    signal_strength: document.getElementById('t-signal').value,
+    temperature: document.getElementById('t-temp').value,
+    humidity: document.getElementById('t-humidity').value,
+    latency_ms: document.getElementById('t-latency').value,
+    pdr: document.getElementById('t-pdr').value
+  });
+  await sendToServer(payload, 'custom');
+}
+
+async function sendNormalReading() {
+  const payload = buildPayload({
+    node_id: randomInt(1, 50),
+    cluster_id: randomInt(1, 5),
+    battery_level: randomFloat(60, 95, 2),
+    signal_strength: randomFloat(-80, -40, 2),
+    temperature: randomFloat(20, 35, 2),
+    humidity: randomFloat(35, 75, 2),
+    latency_ms: randomFloat(40, 180, 2),
+    pdr: randomFloat(0.88, 0.99, 3),
+    energy_consumed_mJ: randomFloat(0.1, 1.0, 3),
+    load_on_node: randomFloat(0.2, 0.8, 2)
+  });
+  await sendToServer(payload, 'normal_random');
+}
+
+async function sendFaultReading() {
+  const payload = buildPayload({
+    node_id: randomInt(1, 50),
+    cluster_id: randomInt(1, 5)
+  });
+  const ftypes = ['battery_low', 'link_loss', 'sensor_fail'];
+  const fault = ftypes[randomInt(0, ftypes.length - 1)];
+  if (fault === 'battery_low') {
+    payload.battery_level = randomFloat(2, 12, 2);
+    payload.energy_consumed_mJ = randomFloat(1.8, 2.0, 3);
+  } else if (fault === 'link_loss') {
+    payload.signal_strength = randomFloat(-100, -95, 2);
+    payload.latency_ms = randomFloat(290, 420, 2);
+    payload.pdr = randomFloat(0.75, 0.81, 3);
+    payload.transmission_success = 0;
+  } else if (fault === 'sensor_fail') {
+    if (Math.random() > 0.5) payload.temperature = randomFloat(60, 80, 2);
+    else payload.humidity = randomFloat(97, 110, 2);
+  } else {
+    payload.temperature = randomFloat(45, 70, 2);
+    payload.latency_ms = randomFloat(220, 360, 2);
+    payload.pdr = randomFloat(0.6, 0.84, 3);
+  }
+  await sendToServer(payload, `fault_random:${fault}`);
+}
+
+// ── Analysis tab ───────────────────────────────────────────────────────────
+function buildAnalysis(force=false) {
+  if (!detections.length && !force) return;
+
+  // Cluster fault rate
+  const cs = {};
+  detections.forEach(r => {
+    const c = r.cluster_id||0;
+    if (!cs[c]) cs[c]={t:0,f:0};
+    cs[c].t++; if(r.fault_detected) cs[c].f++;
+  });
+  const clusters = Object.keys(cs).sort();
+  if (charts.cluster) {
+    charts.cluster.data.labels = clusters.map(c=>`Cluster ${c}`);
+    charts.cluster.data.datasets[0].data = clusters.map(c=>(cs[c].f/cs[c].t*100).toFixed(1));
+    charts.cluster.update('none');
+  } else {
+    charts.cluster = new Chart(document.getElementById('clusterChart'),{
+      type:'bar',
+      data:{labels:clusters.map(c=>`Cluster ${c}`),datasets:[{
+        data:clusters.map(c=>(cs[c].f/cs[c].t*100).toFixed(1)),
+        backgroundColor:clusters.map((_,i)=>CLUSTER_COLORS[i%5]+'aa'),
+        borderColor:clusters.map((_,i)=>CLUSTER_COLORS[i%5]),
+        borderWidth:1,borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{grid:{display:false},ticks:{color:'#4a6a8a'}},
+                y:{grid:{color:'#0d2035'},ticks:{color:'#4a6a8a',callback:v=>v+'%'}}}}
+    });
+  }
+
+  // Layer contribution
+  const l1=detections.filter(r=>r.layer1_fault).length;
+  const l2=detections.filter(r=>r.layer2_fault).length;
+  const l3=detections.filter(r=>r.layer3_fault).length;
+  if (charts.layer) {
+    charts.layer.data.datasets[0].data=[l1,l2,l3];
+    charts.layer.update('none');
+  } else {
+    charts.layer = new Chart(document.getElementById('layerChart'),{
+      type:'bar',
+      data:{labels:['Layer 1\nRule-Based','Layer 2\nCluster','Layer 3\nML Model'],
+        datasets:[{data:[l1,l2,l3],
+          backgroundColor:['rgba(0,212,255,.7)','rgba(0,255,136,.7)','rgba(199,125,255,.7)'],
+          borderColor:['#00d4ff','#00ff88','#c77dff'],
+          borderWidth:1,borderRadius:5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{x:{grid:{display:false},ticks:{color:'#4a6a8a'}},
+                y:{grid:{color:'#0d2035'},ticks:{color:'#4a6a8a'}}}}
+    });
+  }
+
+  // Latency histogram
+  const lats = detections.map(r=>r.latency_ms).filter(Boolean);
+  const bins  = [0,50,100,150,200,250,300,400];
+  const bCnt  = bins.slice(0,-1).map((b,i)=>lats.filter(l=>l>=b&&l<bins[i+1]).length);
+  if (!charts.lat) {
+    charts.lat = new Chart(document.getElementById('latencyChart'),{
+      type:'bar',
+      data:{labels:bins.slice(0,-1).map((b,i)=>`${b}-${bins[i+1]}`),
+        datasets:[{data:bCnt,
+          backgroundColor:bCnt.map((_,i)=>i>4?'rgba(255,51,85,.7)':'rgba(0,212,255,.6)'),
+          borderRadius:3}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},scales:{
+          x:{grid:{display:false},ticks:{color:'#4a6a8a'}},
+          y:{grid:{color:'#0d2035'},ticks:{color:'#4a6a8a'}}}}
+    });
+  }
+
+  // PDR trend
+  const pdrPts = detections.slice(-40).map(r=>r.pdr).filter(Boolean);
+  if (charts.pdr) {
+    charts.pdr.data.labels = pdrPts.map((_,i)=>i);
+    charts.pdr.data.datasets[0].data = pdrPts;
+    charts.pdr.update('none');
+  } else {
+    charts.pdr = new Chart(document.getElementById('pdrChart'),{
+      type:'line',
+      data:{labels:pdrPts.map((_,i)=>i),datasets:[{data:pdrPts,
+        borderColor:'#00ff88',backgroundColor:'rgba(0,255,136,.08)',
+        fill:true,tension:.4,pointRadius:2,borderWidth:1.5}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          x:{grid:{display:false},ticks:{display:false}},
+          y:{min:.75,max:1.01,grid:{color:'#0d2035'},ticks:{color:'#4a6a8a'}}}}
+    });
+  }
+  analysisBuilt = true;
+}
+
+// ════════════════════════════════════════════════════════
+//  BOOT
+// ════════════════════════════════════════════════════════
+window.addEventListener('DOMContentLoaded', async () => {
+  initCharts();
+
+  // Try server
+  try {
+    const r = await fetchWithTimeout(API + '/status', 2000);
+    if (r.ok) {
+      setLive(true);
+      startPolling();
+      poll();
+    } else throw new Error();
+  } catch {
+    clearLiveViews();
+    setLive(false);
+    // Keep trying every 5 s
+    reconnectTimer = setInterval(async () => {
+      try {
+        const r = await fetchWithTimeout(API + '/status', 1500);
+        if (r.ok) { setLive(true); startPolling(); poll(); }
+      } catch {}
+    }, 5000);
+  }
+});
+</script>
+</body>
+</html>
